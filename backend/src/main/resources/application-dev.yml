@@ -1,0 +1,12 @@
+# Dev profile — zero setup: embedded H2 database, no MySQL, no Docker.
+# Data is saved to ./data/pmp.mv.db in the project folder and survives restarts.
+spring:
+  datasource:
+    url: jdbc:h2:file:./data/pmp;MODE=MySQL;AUTO_SERVER=TRUE
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update        # Hibernate creates/updates the tables from the entities
+    show-sql: false

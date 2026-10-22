@@ -1,0 +1,12 @@
+# Prod profile — MySQL. Load the schema first:
+#   mysql -u root -p < src/main/resources/schema/property_maintenance_mysql.sql
+# Run with:  SPRING_PROFILES_ACTIVE=prod
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/property_maintenance?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC}
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:change-me}
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: false

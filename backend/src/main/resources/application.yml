@@ -1,0 +1,19 @@
+spring:
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  jpa:
+    open-in-view: false
+
+security:
+  jwt:
+    secret: ${JWT_SECRET:replace-with-a-32-byte-random-secret-0123456789abcdef}
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000}   # 24h
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+server:
+  port: ${SERVER_PORT:8080}

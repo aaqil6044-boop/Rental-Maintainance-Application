@@ -1,0 +1,32 @@
+services:
+  db:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-change-me}
+      MYSQL_DATABASE: property_maintenance
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./src/main/resources/schema:/docker-entrypoint-initdb.d:ro
+      - dbdata:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DB_PASSWORD:-change-me}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:mysql://db:3306/property_maintenance?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
+      DB_USER: root
+      DB_PASSWORD: ${DB_PASSWORD:-change-me}
+      JWT_SECRET: ${JWT_SECRET:-replace-with-a-32-byte-random-secret-0123456789abcdef}
+    ports:
+      - "8080:8080"
+
+volumes:
+  dbdata:

@@ -1,0 +1,12 @@
+# Java / Maven
+backend/target/
+.maven/
+*.class
+# App data (embedded H2)
+backend/data/
+# IDE
+.idea/
+*.iml
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,5 @@
+package com.pmp.domain.maintenance;
+public enum WorkOrderStatus {
+    CREATED, OFFERED, ACCEPTED, REJECTED, IN_PROGRESS, AWAITING_PARTS,
+    AWAITING_APPROVAL, COMPLETED, VERIFIED, CANCELLED, REASSIGNED
+}
