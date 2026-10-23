@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EstateOps — Rental Maintenance, Managed in One Place</title>
+<meta name="description" content="Report maintenance issues, coordinate repairs, manage properties and track expenses from one platform.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;450;500;600&display=swap">
+<link rel="stylesheet" href="styles.css">
+<style>
+  .page{max-width:1000px;margin:0 auto;padding:0 24px}
+
+  header.top{border-bottom:1px solid var(--rule);background:var(--surface)}
+  .top-in{display:flex;align-items:center;height:62px;gap:14px}
+  .top .right{margin-left:auto;display:flex;align-items:center;gap:14px}
+  .top .signin{font-size:14.5px;font-weight:500}
+
+  .hero{padding:clamp(48px,7vw,76px) 0 clamp(36px,5vw,52px)}
+  .hero h1{font-size:clamp(30px,4.4vw,44px);line-height:1.12;letter-spacing:-.025em;max-width:19ch;margin-bottom:16px}
+  .hero p{font-size:clamp(16px,1.7vw,18px);line-height:1.6;color:var(--slate);max-width:56ch;margin-bottom:26px}
+  .hero .cta{display:flex;gap:12px;flex-wrap:wrap}
+
+  .band{padding:clamp(40px,5vw,60px) 0;border-top:1px solid var(--rule)}
+  .band h2{font-size:clamp(20px,2.4vw,25px);letter-spacing:-.02em;margin-bottom:26px}
+
+  .steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:26px}
+  .step .n{width:28px;height:28px;border-radius:50%;background:var(--pine);color:#fff;
+           display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;margin-bottom:12px}
+  .step h3{font-size:16.5px;letter-spacing:-.01em;margin-bottom:6px}
+  .step p{font-size:14.5px;color:var(--slate);line-height:1.6}
+
+  .roles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+  .role{background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:20px}
+  .role h3{font-size:16px;letter-spacing:-.01em;margin-bottom:7px}
+  .role p{font-size:14px;color:var(--slate);line-height:1.6}
+
+  .close{padding:clamp(40px,5vw,60px) 0 clamp(52px,6vw,72px);border-top:1px solid var(--rule)}
+  .close h2{font-size:clamp(20px,2.4vw,25px);letter-spacing:-.02em;margin-bottom:10px}
+  .close p{font-size:15.5px;color:var(--slate);margin-bottom:22px;max-width:52ch}
+
+  footer.foot{border-top:1px solid var(--rule);padding:22px 0;background:var(--surface)}
+  .foot-in{display:flex;gap:16px;flex-wrap:wrap;align-items:center;font-size:13.5px;color:var(--slate)}
+  .foot-in .links{margin-left:auto;display:flex;gap:18px}
+  .foot-in a:hover{color:var(--ink)}
+
+  @media (max-width:900px){ .roles{grid-template-columns:repeat(2,minmax(0,1fr))} }
+  @media (max-width:720px){
+    .steps,.roles{grid-template-columns:minmax(0,1fr);gap:22px}
+    .top .signin{display:none}
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="page top-in">
+    <a class="wordmark" href="#top">
+      <svg class="glyph" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <rect x="2.5" y="2.5" width="19" height="19" rx="2.5" stroke="#1C5546" stroke-width="1.6"/>
+        <path d="M7 7h4v4H7zM13 7h4v4h-4zM7 13h4v4H7z" fill="#1C5546"/>
+        <path d="M13 13h4v4h-4z" fill="#B2500C"/>
+      </svg>
+      EstateOps
+    </a>
+    <div class="right">
+      <a class="signin" href="login.html">Sign in</a>
+      <a class="btn btn--sm" href="login.html">Get started</a>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+
+  <section class="hero">
+    <div class="page">
+      <h1>Rental Maintenance, Managed in One Place.</h1>
+      <p>Report maintenance issues, coordinate repairs, manage properties and track expenses from one platform.</p>
+      <div class="cta">
+        <a class="btn" href="login.html">Get Started</a>
+        <a class="btn btn--line" href="login.html">Sign In</a>
+        <a class="btn btn--quiet" href="#how">Learn How It Works</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="how">
+    <div class="page">
+      <h2>How it works</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="n" aria-hidden="true">1</div>
+          <h3>Report</h3>
+          <p>The tenant describes the problem in their flat and submits it. It gets a reference number straight away.</p>
+        </div>
+        <div class="step">
+          <div class="n" aria-hidden="true">2</div>
+          <h3>Assign</h3>
+          <p>The manager sets the priority and sends the job to a technician or a vendor company, with a date it should be done by.</p>
+        </div>
+        <div class="step">
+          <div class="n" aria-hidden="true">3</div>
+          <h3>Fix and close</h3>
+          <p>They update progress, attach photos and record what was done. The manager approves the cost and closes it.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band">
+    <div class="page">
+      <h2>Who it is for</h2>
+      <div class="roles roles--4">
+        <div class="role">
+          <h3>Tenants</h3>
+          <p>Report a problem in your flat and follow its progress. You only ever see your own.</p>
+        </div>
+        <div class="role">
+          <h3>Property managers</h3>
+          <p>See every open request across your properties, assign the work, and keep track of what it costs.</p>
+        </div>
+        <div class="role">
+          <h3>Technicians</h3>
+          <p>See the jobs given to you, update progress, and record what you did and what it cost.</p>
+        </div>
+        <div class="role">
+          <h3>Vendors</h3>
+          <p>Receive work orders for your company, send quotations, and submit invoices for approval.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="close">
+    <div class="page">
+      <h2>Ready to start?</h2>
+      <p>Set up your organization, add a property and its units, invite your tenants and technicians, and run a repair from report to closed.</p>
+      <div class="cta" style="display:flex;gap:12px;flex-wrap:wrap">
+        <a class="btn" href="login.html">Get Started</a>
+        <a class="btn btn--line" href="login.html">Sign in</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="page foot-in">
+    <span>EstateOps — rental maintenance and property management</span>
+    <nav class="links" aria-label="Footer">
+      <a href="login.html">Sign in</a>
+    </nav>
+  </div>
+</footer>
+
+</body>
+</html>

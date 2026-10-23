@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EstateOps</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;450;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="side">
+    <a class="wordmark" href="index.html">
+      <svg class="glyph" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <rect x="2.5" y="2.5" width="19" height="19" rx="2.5" stroke="#8FC9B4" stroke-width="1.6"/>
+        <path d="M7 7h4v4H7zM13 7h4v4h-4zM7 13h4v4H7z" fill="#8FC9B4"/>
+        <path d="M13 13h4v4h-4z" fill="#E08F46"/>
+      </svg>
+      EstateOps
+    </a>
+    <nav class="side-nav" id="nav" aria-label="Main"></nav>
+    <div class="side-foot">
+      <div class="side-user">
+        <span class="avatar" id="avatar">?</span>
+        <span class="who"><b id="who">—</b><span id="whoRole">—</span></span>
+      </div>
+      <div class="side-nav">
+        <button type="button" id="logout" title="Signs you out on every device">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 4h3a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M10 8 6 12l4 4M6 12h9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="lbl">Sign out</span>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <div>
+    <header class="topbar">
+      <h1 id="viewTitle">Overview</h1>
+      <div class="grow" id="topActions"></div>
+    </header>
+    <div class="content">
+      <p class="alert" id="flash" role="status"></p>
+      <div id="panes" class="pane"><p class="muted">Loading…</p></div>
+    </div>
+  </div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

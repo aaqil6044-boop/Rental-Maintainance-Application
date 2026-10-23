@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in — EstateOps</title>
+<meta name="description" content="Sign in to EstateOps to report, assign and track rental maintenance.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;450;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="styles.css">
+<style>
+  .auth-list{list-style:none;padding:0;margin:26px 0 0;display:flex;flex-direction:column;gap:14px;max-width:44ch}
+  .auth-list li{display:grid;grid-template-columns:96px 1fr;gap:12px;font-size:14px;color:var(--on-ink-mute);line-height:1.5}
+  .auth-list b{color:#fff;font-weight:500}
+  .help{font-size:13px;color:var(--slate);margin-top:18px}
+</style>
+</head>
+<body>
+<div class="auth">
+
+  <aside class="auth-aside on-ink">
+    <a class="wordmark" href="index.html">
+      <svg class="glyph" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <rect x="2.5" y="2.5" width="19" height="19" rx="2.5" stroke="#8FC9B4" stroke-width="1.6"/>
+        <path d="M7 7h4v4H7zM13 7h4v4h-4zM7 13h4v4H7z" fill="#8FC9B4"/>
+        <path d="M13 13h4v4h-4z" fill="#E08F46"/>
+      </svg>
+      EstateOps
+    </a>
+    <div class="auth-mid">
+      <h2>Rental maintenance, managed in one place.</h2>
+      <p class="say">Report issues, coordinate repairs, manage properties and track expenses. Each person sees only the work that is theirs.</p>
+      <ul class="auth-list">
+        <li><b>Tenants</b><span>Report a problem and follow it to the fix.</span></li>
+        <li><b>Managers</b><span>Review, assign and approve across your properties.</span></li>
+        <li><b>Technicians</b><span>See your assigned jobs and record the work.</span></li>
+        <li><b>Vendors</b><span>Quote, complete and invoice the jobs sent to your company.</span></li>
+      </ul>
+    </div>
+    <p class="auth-foot">© 2026 EstateOps</p>
+  </aside>
+
+  <main class="auth-main">
+    <div class="auth-card">
+      <h1 id="title">Sign in</h1>
+      <p class="say" id="blurb">Use the email and password for your account.</p>
+
+      <div class="seg seg--block" id="tabs" role="group" aria-label="Sign in or create an account" hidden>
+        <button type="button" id="mLogin" aria-pressed="true">Sign in</button>
+        <button type="button" id="mRegister" aria-pressed="false">Tenant sign-up</button>
+      </div>
+
+      <form id="form" novalidate>
+        <div id="orgRow" hidden>
+          <label for="org">Organization name</label>
+          <input id="org" class="field" type="text" placeholder="Your property company" autocomplete="organization">
+        </div>
+        <div id="nameRow" hidden>
+          <label for="name">Full name</label>
+          <input id="name" class="field" type="text" placeholder="Your name" autocomplete="name">
+        </div>
+        <div>
+          <label for="email">Email</label>
+          <input id="email" class="field" type="email" placeholder="you@example.com" autocomplete="username" required>
+        </div>
+        <div>
+          <label for="pw">Password</label>
+          <div class="field-wrap">
+            <input id="pw" class="field" type="password" placeholder="Your password" autocomplete="current-password" required>
+            <button type="button" class="reveal-pw" id="reveal" aria-pressed="false">Show</button>
+          </div>
+        </div>
+        <div id="keyRow" hidden>
+          <label for="key">Setup key</label>
+          <input id="key" class="field" type="password" placeholder="From the server settings" autocomplete="off">
+        </div>
+
+        <p class="alert" id="err" role="alert"></p>
+        <button type="submit" class="btn btn--block" id="submit">Sign in</button>
+      </form>
+
+      <p class="help" id="help">Managers, technicians and vendors join by invitation. Open the link your manager sent you. Forgotten your password? Ask your manager for a reset link.</p>
+
+      <a class="auth-back" href="index.html">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Back to the overview
+      </a>
+    </div>
+  </main>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var form = $('form'), err = $('err'), submit = $('submit');
+  var mode = 'login', needsKey = false;
+
+  var COPY = {
+    login:    { title: 'Sign in', blurb: 'Use the email and password for your account.', btn: 'Sign in', busy: 'Signing in…', path: '/api/auth/login' },
+    register: { title: 'Create a tenant account', blurb: 'You can report issues once your manager links you to your unit, or you accept their invitation.', btn: 'Create account', busy: 'Creating account…', path: '/api/auth/register' },
+    setup:    { title: 'Set up EstateOps', blurb: 'This is a new installation. Create the organization and the first manager account.', btn: 'Create organization', busy: 'Setting up…', path: '/api/setup' }
+  };
+
+  function setMode(next) {
+    mode = next;
+    var c = COPY[mode];
+    $('title').textContent = c.title;
+    $('blurb').textContent = c.blurb;
+    submit.textContent = c.btn;
+    $('orgRow').hidden = mode !== 'setup';
+    $('nameRow').hidden = mode === 'login';
+    $('keyRow').hidden = !(mode === 'setup' && needsKey);
+    $('tabs').hidden = mode === 'setup';
+    $('help').hidden = mode !== 'login';
+    $('pw').setAttribute('autocomplete', mode === 'login' ? 'current-password' : 'new-password');
+    $('pw').placeholder = mode === 'login' ? 'Your password' : 'At least 8 characters';
+    $('mLogin').setAttribute('aria-pressed', mode === 'login' ? 'true' : 'false');
+    $('mRegister').setAttribute('aria-pressed', mode === 'register' ? 'true' : 'false');
+    err.textContent = '';
+  }
+  function fail(msg, field) { err.textContent = msg; if (field) field.focus(); }
+
+  $('mLogin').addEventListener('click', function () { setMode('login'); });
+  $('mRegister').addEventListener('click', function () { setMode('register'); });
+  $('reveal').addEventListener('click', function () {
+    var pw = $('pw'), shown = pw.type === 'text';
+    pw.type = shown ? 'password' : 'text';
+    this.textContent = shown ? 'Show' : 'Hide';
+    pw.focus();
+  });
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    err.textContent = '';
+    var mail = $('email').value.trim(), pass = $('pw').value;
+    if (!mail) return fail('Enter your email.', $('email'));
+    if (mail.indexOf('@') < 1) return fail('That email address does not look right.', $('email'));
+    if (!pass) return fail('Enter your password.', $('pw'));
+    if (mode !== 'login' && pass.length < 8) return fail('Use at least 8 characters for your password.', $('pw'));
+    if (mode !== 'login' && !$('name').value.trim()) return fail('Enter your full name.', $('name'));
+    if (mode === 'setup' && !$('org').value.trim()) return fail('Enter your organization name.', $('org'));
+
+    var body = { email: mail, password: pass };
+    if (mode !== 'login') body.fullName = $('name').value.trim();
+    if (mode === 'setup') { body.organizationName = $('org').value.trim(); if (needsKey) body.setupKey = $('key').value; }
+
+    submit.disabled = true; submit.textContent = COPY[mode].busy;
+    fetch(COPY[mode].path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      .then(function (res) {
+        return res.json().catch(function () { return {}; }).then(function (data) {
+          if (!res.ok) throw new Error(data.message || ('Could not complete that (error ' + res.status + ').'));
+          return data;
+        });
+      })
+      .then(function (data) {
+        try { localStorage.setItem('eo_auth', JSON.stringify(data)); } catch (x) {}
+        location.href = 'app.html';
+      })
+      .catch(function (e) {
+        fail(e && e.name === 'TypeError' ? 'Cannot reach the server. Check that EstateOps is running.' : e.message);
+        submit.disabled = false; submit.textContent = COPY[mode].btn;
+      });
+  });
+
+  fetch('/api/setup/status').then(function (r) { return r.json(); }).then(function (s) {
+    needsKey = !!s.requiresSetupKey;
+    setMode(s.needsSetup ? 'setup' : 'login');
+    if (!s.needsSetup) $('tabs').hidden = false;
+  }).catch(function () { setMode('login'); $('tabs').hidden = false; });
+  $('email').focus();
+})();
+</script>
+</body>
+</html>

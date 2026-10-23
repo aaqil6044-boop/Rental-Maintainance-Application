@@ -3,11 +3,16 @@ spring:
     active: ${SPRING_PROFILES_ACTIVE:dev}
   jpa:
     open-in-view: false
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 12MB
 
 security:
   jwt:
-    secret: ${JWT_SECRET:replace-with-a-32-byte-random-secret-0123456789abcdef}
-    expiration-ms: ${JWT_EXPIRATION_MS:86400000}   # 24h
+    # Override in production with a real 32+ byte secret: JWT_SECRET=...
+    secret: ${JWT_SECRET:change-me-to-a-32-byte-minimum-secret-0123456789}
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
 
 management:
   endpoints:

@@ -1,12 +1,13 @@
-# Prod profile — MySQL. Load the schema first:
-#   mysql -u root -p < src/main/resources/schema/property_maintenance_mysql.sql
-# Run with:  SPRING_PROFILES_ACTIVE=prod
+# Production: MySQL. Schema is managed deliberately, not generated at startup.
 spring:
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3306/property_maintenance?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC}
-    username: ${DB_USER:root}
-    password: ${DB_PASSWORD:change-me}
+    url: ${DB_URL:jdbc:mysql://localhost:3306/estateops}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
-      ddl-auto: none
-    show-sql: false
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
