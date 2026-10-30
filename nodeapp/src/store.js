@@ -1,6 +1,7 @@
 "use strict";
 /** Every SQL statement lives here. Anything scoped to an organization takes the org id explicitly. */
 const db = require("./db");
+const config = require("./config");
 const now = () => new Date().toISOString();
 
 /* ================= organizations ================= */
@@ -17,26 +18,30 @@ const findAccount = (id) => db.prepare("SELECT * FROM accounts WHERE id = ?").ge
 const countAccounts = () => db.prepare("SELECT COUNT(*) AS n FROM accounts").get().n;
 
 function createAccount({ email, passwordHash, fullName, role, orgId = null, vendorId = null,
-                         orgAdmin = 0, phone = null, skills = null, profileComplete = 0 }) {
+                         orgAdmin = 0, phone = null, skills = null, profileComplete = 0, emailVerified = 1 }) {
+  // emailVerified defaults to 1 because every path except public self-registration proves the address (invitation link,
+  // manager-created account, first-run setup). Public sign-up passes 0 until the person opens the verification link.
   const info = db.prepare(`
     INSERT INTO accounts (email, password_hash, full_name, role, active, created_at,
-                          org_id, vendor_id, org_admin, phone, skills, profile_complete)
-    VALUES (?,?,?,?,1,?,?,?,?,?,?,?)`)
-    .run(email, passwordHash, fullName, role, now(), orgId, vendorId, orgAdmin, phone, skills, profileComplete);
+                          org_id, vendor_id, org_admin, phone, skills, profile_complete, email_verified)
+    VALUES (?,?,?,?,1,?,?,?,?,?,?,?,?)`)
+    .run(email, passwordHash, fullName, role, now(), orgId, vendorId, orgAdmin, phone, skills, profileComplete, emailVerified ? 1 : 0);
   return findAccount(info.lastInsertRowid);
 }
 const accountsByRole = (orgId, role) => db.prepare(
   "SELECT * FROM accounts WHERE org_id = ? AND role = ? AND active = 1 ORDER BY full_name").all(orgId, role);
 const teamOf = (orgId) => db.prepare(`
   SELECT a.*, v.name AS vendor_name FROM accounts a LEFT JOIN vendors v ON v.id = a.vendor_id
-   WHERE a.org_id = ? ORDER BY a.role, a.full_name`).all(orgId);
+   WHERE a.org_id = ? AND a.email NOT LIKE 'loadtest-%@loadtest.invalid' ORDER BY a.role, a.full_name`).all(orgId);   // load-test fixtures are not team members
 const managersOf = (orgId) => accountsByRole(orgId, "MANAGER");
-const setAccountActive = (id, active) =>
-  db.prepare("UPDATE accounts SET active = ?, token_version = token_version + 1 WHERE id = ?").run(active ? 1 : 0, id);
-const setPassword = (id, hash) =>
-  db.prepare("UPDATE accounts SET password_hash = ?, token_version = token_version + 1 WHERE id = ?").run(hash, id);
-const bumpTokenVersion = (id) =>
-  db.prepare("UPDATE accounts SET token_version = token_version + 1 WHERE id = ?").run(id);
+// Anything that bumps token_version ends every token the account holds, so the session rows are closed too (the list of devices stays truthful).
+const endSessions = (id) => db.prepare("UPDATE sessions SET revoked_at = ? WHERE account_id = ? AND revoked_at IS NULL").run(now(), id);
+const setAccountActive = (id, active) => db.transaction(() => {
+  db.prepare("UPDATE accounts SET active = ?, token_version = token_version + 1 WHERE id = ?").run(active ? 1 : 0, id); endSessions(id); })();
+const setPassword = (id, hash) => db.transaction(() => {
+  db.prepare("UPDATE accounts SET password_hash = ?, token_version = token_version + 1 WHERE id = ?").run(hash, id); endSessions(id); })();
+const bumpTokenVersion = (id) => db.transaction(() => {
+  db.prepare("UPDATE accounts SET token_version = token_version + 1 WHERE id = ?").run(id); endSessions(id); })();
 const updateProfile = (id, fullName, phone, skills) =>
   db.prepare("UPDATE accounts SET full_name = ?, phone = ?, skills = ?, profile_complete = 1 WHERE id = ?")
     .run(fullName, phone, skills, id);
@@ -46,10 +51,11 @@ const setAccountOrg = (id, orgId) => db.prepare("UPDATE accounts SET org_id = ? 
 const findVendor = (id) => db.prepare("SELECT * FROM vendors WHERE id = ?").get(id);
 const vendorNameTaken = (orgId, name) => !!db.prepare(
   "SELECT 1 FROM vendors WHERE org_id = ? AND name = ? COLLATE NOCASE").get(orgId, name);
-const vendorsOf = (orgId, status) => db.prepare(`
+// The load-test fixture vendor is hidden from real lists (it is only ever used by the load-test engine).
+const vendorsOf = (orgId, status, includeFixtures = false) => db.prepare(`
   SELECT v.*, (SELECT COUNT(*) FROM accounts a WHERE a.vendor_id = v.id AND a.active = 1) AS member_count,
          (SELECT COUNT(*) FROM requests r WHERE r.vendor_id = v.id AND r.status != 'CLOSED') AS open_jobs
-    FROM vendors v WHERE v.org_id = ? ${status ? "AND v.status = ?" : ""} ORDER BY v.name`)
+    FROM vendors v WHERE v.org_id = ? ${status ? "AND v.status = ?" : ""} ${includeFixtures ? "" : "AND v.name NOT LIKE '[LOADTEST] Fixture vendor%'"} ORDER BY v.name`)
   .all(...(status ? [orgId, status] : [orgId]));
 function createVendor({ orgId, name, contactEmail, phone, categories, status = "PENDING" }) {
   const info = db.prepare(`INSERT INTO vendors (org_id, name, contact_email, phone, categories, status, created_at)
@@ -78,6 +84,52 @@ const findInvitationByHash = (h) => db.prepare(`
     LEFT JOIN units u ON u.id = i.unit_id
     LEFT JOIN properties p ON p.id = u.property_id
    WHERE i.token_hash = ?`).get(h);
+/* ---- sessions: one row per sign-in; the token carries the sid, so a session can be ended on its own ---- */
+function createSession(accountId, sid, expiresAt, ip, ua, cap) {
+  db.prepare("INSERT INTO sessions (sid, account_id, created_at, last_seen_at, expires_at, ip, user_agent) VALUES (?,?,?,?,?,?,?)")
+    .run(sid, accountId, now(), now(), expiresAt, String(ip || "").slice(0, 64), String(ua || "").slice(0, 200));
+  // Keep only the newest `cap` live sessions: the oldest sign-ins are ended first.
+  db.prepare(`UPDATE sessions SET revoked_at = ? WHERE account_id = ? AND revoked_at IS NULL AND id NOT IN
+              (SELECT id FROM sessions WHERE account_id = ? AND revoked_at IS NULL ORDER BY id DESC LIMIT ?)`).run(now(), accountId, accountId, cap);
+}
+const findSession = (sid, accountId) => db.prepare("SELECT * FROM sessions WHERE sid = ? AND account_id = ?").get(sid, accountId);
+const touchSession = (id) => db.prepare("UPDATE sessions SET last_seen_at = ? WHERE id = ?").run(now(), id);
+const revokeSession = (id, accountId) => db.prepare("UPDATE sessions SET revoked_at = ? WHERE id = ? AND account_id = ? AND revoked_at IS NULL").run(now(), id, accountId).changes;
+const revokeAccountSessions = (accountId, exceptId = 0) => db.prepare("UPDATE sessions SET revoked_at = ? WHERE account_id = ? AND id != ? AND revoked_at IS NULL").run(now(), accountId, exceptId).changes;
+const activeSessions = (accountId) => db.prepare("SELECT * FROM sessions WHERE account_id = ? AND revoked_at IS NULL AND expires_at > ? ORDER BY last_seen_at DESC").all(accountId, now());
+/** Housekeeping: rows that ended more than 30 days ago are of no use. */
+const purgeSessions = () => db.prepare("DELETE FROM sessions WHERE COALESCE(revoked_at, expires_at) < ?").run(new Date(Date.now() - 30 * 86400000).toISOString()).changes;
+
+/* ---- two-factor ---- */
+const mfaBegin = (id, sealedSecret) => db.prepare("UPDATE accounts SET mfa_secret = ? WHERE id = ? AND mfa_enabled = 0").run(sealedSecret, id);
+function mfaEnable(id, step, hashes) {
+  db.transaction(() => {
+    db.prepare("UPDATE accounts SET mfa_enabled = 1, mfa_last_step = ? WHERE id = ?").run(step, id);
+    db.prepare("DELETE FROM mfa_recovery WHERE account_id = ?").run(id);
+    const ins = db.prepare("INSERT INTO mfa_recovery (account_id, code_hash) VALUES (?,?)");
+    hashes.forEach((h) => ins.run(id, h));
+  })();
+}
+const mfaDisable = (id) => db.transaction(() => {
+  db.prepare("UPDATE accounts SET mfa_enabled = 0, mfa_secret = NULL, mfa_last_step = 0 WHERE id = ?").run(id);
+  db.prepare("DELETE FROM mfa_recovery WHERE account_id = ?").run(id);
+})();
+/** A time step may be used once: false if it (or a later one) was already accepted. */
+const mfaClaimStep = (id, step) => db.prepare("UPDATE accounts SET mfa_last_step = ? WHERE id = ? AND mfa_last_step < ?").run(step, id, step).changes === 1;
+const mfaUseRecovery = (id, hash) => db.prepare("UPDATE mfa_recovery SET used_at = ? WHERE account_id = ? AND code_hash = ? AND used_at IS NULL").run(now(), id, hash).changes === 1;
+const mfaRecoveryLeft = (id) => db.prepare("SELECT COUNT(*) n FROM mfa_recovery WHERE account_id = ? AND used_at IS NULL").get(id).n;
+
+/* ---- single-use account tokens: self-service password reset and email verification (only the SHA-256 hash is stored) ---- */
+function createAccountToken(accountId, purpose, tokenHash, ttlHours) {
+  db.prepare("UPDATE account_tokens SET used_at = ? WHERE account_id = ? AND purpose = ? AND used_at IS NULL").run(now(), accountId, purpose);   // newest link wins
+  db.prepare("INSERT INTO account_tokens (token_hash, purpose, account_id, expires_at, created_at) VALUES (?,?,?,?,?)")
+    .run(tokenHash, purpose, accountId, new Date(Date.now() + ttlHours * 3600000).toISOString(), now());
+}
+const findAccountToken = (hash, purpose) => db.prepare(
+  "SELECT * FROM account_tokens WHERE token_hash = ? AND purpose = ? AND used_at IS NULL AND expires_at > ?").get(hash, purpose, now());
+/** Marks the token used; false if someone else used it first. */
+const useAccountToken = (id) => db.prepare("UPDATE account_tokens SET used_at = ? WHERE id = ? AND used_at IS NULL").run(now(), id).changes === 1;
+const markEmailVerified = (accountId) => db.prepare("UPDATE accounts SET email_verified = 1 WHERE id = ?").run(accountId);
 const findInvitation = (id) => db.prepare("SELECT * FROM invitations WHERE id = ?").get(id);
 const pendingInvitations = (orgId) => db.prepare(`
   SELECT i.*, v.name AS vendor_name, u.label AS unit_label, p.name AS property_name
@@ -177,19 +229,20 @@ function createRequest(d) {
     .run(d.unitId, d.reporterId, d.title, d.description, d.category, d.priority, t, t);
   return findRequest(info.lastInsertRowid);
 }
-function updateRequestStatus(id, status, completionNotes) {
-  db.prepare(`UPDATE requests SET status = ?, closed_at = ?, updated_at = ?,
-                     completion_notes = COALESCE(?, completion_notes) WHERE id = ?`)
-    .run(status, status === "CLOSED" ? now() : null, now(), completionNotes || null, id);
-  return findRequest(id);
+/** Compare-and-set: the row changes only if it still has the status the caller looked at. Returns null when someone else got there first. */
+function updateRequestStatus(id, status, completionNotes, expectedStatus) {
+  const r = db.prepare(`UPDATE requests SET status = ?, closed_at = ?, updated_at = ?,
+                     completion_notes = COALESCE(?, completion_notes) WHERE id = ? AND (? IS NULL OR status = ?)`)
+    .run(status, status === "CLOSED" ? now() : null, now(), completionNotes || null, id, expectedStatus || null, expectedStatus || null);
+  return r.changes ? findRequest(id) : null;
 }
-function updateAssignment(id, { technicianId, vendorId, dueDate, priority, category, status }) {
-  db.prepare(`UPDATE requests SET technician_id = ?, vendor_id = ?, due_date = COALESCE(?, due_date),
+function updateAssignment(id, { technicianId, vendorId, dueDate, priority, category, status, expectedStatus }) {
+  const r = db.prepare(`UPDATE requests SET technician_id = ?, vendor_id = ?, due_date = COALESCE(?, due_date),
                      priority = COALESCE(?, priority), category = COALESCE(?, category),
-                     status = ?, updated_at = ? WHERE id = ?`)
+                     status = ?, updated_at = ? WHERE id = ? AND (? IS NULL OR status = ?)`)
     .run(technicianId || null, vendorId || null, dueDate || null, priority || null, category || null,
-         status, now(), id);
-  return findRequest(id);
+         status, now(), id, expectedStatus || null, expectedStatus || null);
+  return r.changes ? findRequest(id) : null;
 }
 function setClassification(id, category, priority) {
   db.prepare("UPDATE requests SET category = ?, priority = ?, updated_at = ? WHERE id = ?")
@@ -248,8 +301,8 @@ function expensesOf(requestId, account) {
   return db.prepare(EXPENSE_SELECT + " WHERE x.request_id = ?" + extra + " ORDER BY x.created_at, x.id").all(...args);
 }
 function approveExpense(id, approverId) {
-  db.prepare("UPDATE expenses SET approved = 1, approved_by_id = ? WHERE id = ?").run(approverId, id);
-  return findExpense(id);
+  const r = db.prepare("UPDATE expenses SET approved = 1, approved_by_id = ? WHERE id = ? AND approved = 0").run(approverId, id);
+  return r.changes ? findExpense(id) : null;
 }
 /** Spend across what this account may see since a date, split into approved and awaiting approval. */
 function spendSince(account, isoDate) {
@@ -310,8 +363,8 @@ function quotationsOf(requestId, account) {
   return db.prepare(QUOTE_SELECT + " WHERE q.request_id = ? ORDER BY q.id").all(requestId);
 }
 function decideQuotation(id, status, deciderId) {
-  db.prepare("UPDATE quotations SET status = ?, decided_by = ?, decided_at = ? WHERE id = ?").run(status, deciderId, now(), id);
-  return findQuotation(id);
+  const r = db.prepare("UPDATE quotations SET status = ?, decided_by = ?, decided_at = ? WHERE id = ? AND status = 'PENDING'").run(status, deciderId, now(), id);
+  return r.changes ? findQuotation(id) : null;
 }
 const pendingQuotationCount = (orgId) => db.prepare(`
   SELECT COUNT(*) AS n FROM quotations q JOIN requests r ON r.id = q.request_id
@@ -328,7 +381,7 @@ const findSuggestion = (id) => db.prepare("SELECT * FROM ai_suggestions WHERE id
 const latestSuggestion = (requestId) =>
   db.prepare("SELECT * FROM ai_suggestions WHERE request_id = ? ORDER BY id DESC LIMIT 1").get(requestId);
 const decideSuggestion = (id, decision, by) =>
-  db.prepare("UPDATE ai_suggestions SET decision = ?, decided_by = ?, decided_at = ? WHERE id = ?").run(decision, by, now(), id);
+  db.prepare("UPDATE ai_suggestions SET decision = ?, decided_by = ?, decided_at = ? WHERE id = ? AND decision IS NULL").run(decision, by, now(), id).changes;
 
 /* ================= audit ================= */
 function audit(account, action, entity, entityId, detail) {
@@ -341,15 +394,15 @@ const auditOf = (orgId, limit) => db.prepare(`
    WHERE l.org_id = ? ORDER BY l.id DESC LIMIT ?`).all(orgId, limit);
 
 /* ================= insights (rule-based analysis of stored records) ================= */
-/** Same unit + same category reported 2+ times in the last 90 days. */
+/** Same unit + same category reported several times (INSIGHTS_RECURRING_MIN, default 2) within INSIGHTS_WINDOW_DAYS (default 90). */
 function recurringIssues(orgId) {
-  const since = new Date(Date.now() - 90 * 86400000).toISOString();
+  const since = new Date(Date.now() - config.insights.windowDays * 86400000).toISOString();
   return db.prepare(`
     SELECT u.id AS unit_id, u.label AS unit_label, p.name AS property_name, r.category,
            COUNT(*) AS occurrences, MAX(r.created_at) AS last_reported
       FROM requests r JOIN units u ON u.id = r.unit_id JOIN properties p ON p.id = u.property_id
      WHERE p.org_id = ? AND r.created_at >= ?
-     GROUP BY u.id, r.category HAVING COUNT(*) >= 2 ORDER BY occurrences DESC, last_reported DESC`).all(orgId, since);
+     GROUP BY u.id, r.category HAVING COUNT(*) >= ? ORDER BY occurrences DESC, last_reported DESC`).all(orgId, since, config.insights.recurringMin);
 }
 /** Expenses far above the typical amount for their category (needs 3+ other samples). */
 function costAnomalies(orgId) {
@@ -363,7 +416,7 @@ function costAnomalies(orgId) {
     const others = rows.filter((o) => o.category === x.category && o.id !== x.id);
     if (others.length < 3) continue;
     const mean = others.reduce((s, o) => s + o.amount_cents, 0) / others.length;
-    if (x.amount_cents > mean * 2) out.push({ ...x, typical_cents: Math.round(mean) });
+    if (x.amount_cents > mean * config.insights.costFactor) out.push({ ...x, typical_cents: Math.round(mean) });
   }
   return out.sort((a, b) => b.amount_cents - a.amount_cents);
 }
@@ -374,6 +427,9 @@ module.exports = {
   findAccountByEmail, findAccount, countAccounts, createAccount, accountsByRole, teamOf, managersOf,
   setAccountActive, setPassword, bumpTokenVersion, updateProfile, setAccountOrg,
   findVendor, vendorNameTaken, vendorsOf, createVendor, setVendorStatus, updateVendorProfile,
+  createSession, findSession, touchSession, revokeSession, revokeAccountSessions, activeSessions, purgeSessions,
+  mfaBegin, mfaEnable, mfaDisable, mfaClaimStep, mfaUseRecovery, mfaRecoveryLeft,
+  createAccountToken, findAccountToken, useAccountToken, markEmailVerified,
   createInvitation, findInvitationByHash, findInvitation, pendingInvitations, acceptInvitation, revokeInvitation,
   listProperties, findProperty, createProperty,
   findUnit, unitsOfProperty, unitLabelTaken, createUnit, allActiveUnits, unitsForTenant, tenantHasUnit, assignTenantToUnit,

@@ -1,0 +1,36 @@
+# Smoke test: short and light. Proves the system works under a little concurrent load and that authorization still holds.
+# Intended for every pull request (about 1 minute). It checks thresholds and security, not fine performance differences.
+name: Smoke test
+environment:
+  name: local
+profile: linear
+duration: 45s
+users:
+  initial: 2
+  max: 8
+rampUp: 10s
+rampDown: 5s
+seed: 1
+trafficShare:
+  tenant: 50
+  propertyManager: 20
+  technician: 10
+  vendor: 12
+  admin: 8
+  owner: 0
+thinkTime:
+  min: 200ms
+  max: 900ms
+pacing: 300ms
+testData:
+  orgs: 2
+  cleanup: true
+  writes: true
+  maxCreates: 120
+security:
+  checkPercent: 12
+thresholds:
+  p95Ms: 1000
+  errorRatePct: 1
+  securityLeaks: 0
+baseline: previous

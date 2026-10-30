@@ -1,0 +1,21 @@
+# Scale-out comparison: the same step-load profile is run against 1 process, a worker cluster, and several instances
+# behind the load balancer (see performance/scripts/scale.js). Short on purpose: it compares topologies, it does not soak.
+name: Scale test
+environment:
+  name: local
+profile: step
+duration: 80s
+users:
+  initial: 10
+  max: 90
+rampUp: 56s
+rampDown: 8s
+steps: 4
+seed: 7
+trafficShare: { tenant: 50, propertyManager: 20, technician: 10, vendor: 12, admin: 8, owner: 0 }
+thinkTime: { min: 50ms, max: 200ms }
+pacing: 50ms
+testData: { orgs: 2, cleanup: true, writes: true, maxCreates: 800 }
+security: { checkPercent: 4 }
+thresholds: { p95Ms: 3000, errorRatePct: 2, securityLeaks: 0 }
+baseline: previous

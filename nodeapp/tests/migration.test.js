@@ -48,7 +48,8 @@ ok("legacy database created with real rows", true);
 
 section("Open it with the new release");
 const db = require("../src/db");
-ok("both migrations were applied", db.appliedMigrations.length === 2 && /organizations/.test(db.appliedMigrations[1]), db.appliedMigrations);
+ok("all eight migrations were applied", db.appliedMigrations.length === 8 && /organizations/.test(db.appliedMigrations[1]) && /load test/.test(db.appliedMigrations[2]) && /performance testing/.test(db.appliedMigrations[3]), db.appliedMigrations);
+ok("the load-test table exists and is empty", db.prepare("SELECT COUNT(*) n FROM loadtest_runs").get().n === 0);
 const count = (t) => db.prepare(`SELECT COUNT(*) n FROM ${t}`).get().n;
 ok("accounts preserved", count("accounts") === 3);
 ok("passwords preserved", db.prepare("SELECT password_hash h FROM accounts WHERE id = 2").get().h === "hash2");
@@ -70,7 +71,7 @@ ok("the rebuilt accounts table accepts the VENDOR role", accepted);
 let rejected = false;
 try { db.prepare("INSERT INTO accounts (email,password_hash,full_name,role,created_at) VALUES ('z@x.test','h','Z','SUPERUSER',?)").run(n); } catch (e) { rejected = true; }
 ok("and still rejects an invented role", rejected);
-ok("the schema version is recorded", count("schema_migrations") === 2);
+ok("the schema version is recorded", count("schema_migrations") === 8);
 
 section("Opening it again is a no-op");
 const { execFileSync } = require("child_process");

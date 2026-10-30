@@ -20,12 +20,12 @@
     var body = opts.body;
     if (body !== undefined && !(body instanceof FormData)) { h['Content-Type'] = 'application/json'; body = JSON.stringify(body); }
     return fetch('/api' + path, { method: opts.method || (body !== undefined ? 'POST' : 'GET'), headers: h, body: body }).then(function (res) {
-      if (res.status === 401) { leave(); throw new Error('Your session has ended. Please sign in again.'); }
+      if (res.status === 401 && !/^\/auth\/(mfa\/|change-password)/.test(path)) { leave(); throw new Error('Your session has ended. Please sign in again.'); }
       if (res.status === 204) return { data: null, total: 0 };
       return res.text().then(function (text) {
         var data = null;
         if (text) { try { data = JSON.parse(text); } catch (e) { data = null; } }
-        if (!res.ok) { var err = new Error((data && data.message) || ('Request failed (' + res.status + ').')); err.code = data && data.code; throw err; }
+        if (!res.ok) { var err = new Error((data && data.message) || ('Request failed (' + res.status + ').')); err.code = data && data.code; if (err.code === 'MFA_REQUIRED' && location.hash !== '#/account') location.hash = '#/account'; throw err; }
         return { data: data, total: Number(res.headers.get('X-Total-Count') || 0) };
       });
     });
@@ -55,12 +55,13 @@
   function empty(title, text, action) { return '<div class="empty"><h3>' + esc(title) + '</h3><p>' + esc(text) + '</p>' + (action || '') + '</div>'; }
   function fieldRow(label, input, wide) { return '<div' + (wide ? ' class="wide"' : '') + '><label>' + label + '</label>' + input + '</div>'; }
   function size(n) { return n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'; }
-  function busy(btn, on, text) { if (!btn) return; btn.disabled = on; if (text) btn.dataset.t = btn.dataset.t || btn.textContent; btn.textContent = on ? (text || 'Working…') : (btn.dataset.t || btn.textContent); }
+  // Always remember the button's own label before replacing it, otherwise a failed submit leaves the button saying "Working…" for good.
+  function busy(btn, on, text) { if (!btn) return; btn.disabled = on; if (on) btn.dataset.t = btn.dataset.t || btn.textContent; btn.textContent = on ? (text || 'Working…') : (btn.dataset.t || btn.textContent); }
   function copyText(t) { if (navigator.clipboard) return navigator.clipboard.writeText(t); var a = document.createElement('textarea'); a.value = t; document.body.appendChild(a); a.select(); document.execCommand('copy'); a.remove(); return Promise.resolve(); }
   function origin() { return location.origin; }
-  function linkBox(path, what) {
+  function linkBox(path, what, emailed) {
     var url = origin() + path;
-    return '<div class="linkbox"><div style="flex-basis:100%"><b>' + esc(what) + '</b> Send this link to them. It works once and is shown only now.</div><code>' + esc(url) + '</code><button type="button" class="btn btn--sm btn--line" data-act="copy" data-text="' + esc(url) + '">Copy link</button></div>';
+    return '<div class="linkbox"><div style="flex-basis:100%"><b>' + esc(what) + '</b> ' + (emailed ? 'It was also emailed to them. ' : 'Send this link to them. ') + 'It works once and is shown only now.</div><code>' + esc(url) + '</code><button type="button" class="btn btn--sm btn--line" data-act="copy" data-text="' + esc(url) + '">Copy link</button></div>';
   }
 
   /* ---------------- navigation ---------------- */
@@ -75,11 +76,12 @@
     insights: 'M5 20V10M12 20V4M19 20v-7',
     activity: 'M12 7v5l3 2M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z',
     notifications: 'M6 17V11a6 6 0 0 1 12 0v6l1.5 2h-15zM10 21h4',
+    loadtest: 'M3 17l5-6 4 3 5-8 4 5',
     account: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21c0-4 4-6 8-6s8 2 8 6'
   };
   var NAV = {
     TENANT:     [['overview', 'Overview'], ['report', 'Report an issue'], ['requests', 'My requests'], ['notifications', 'Notifications'], ['account', 'Account']],
-    MANAGER:    [['overview', 'Overview'], ['requests', 'Requests'], ['properties', 'Properties'], ['people', 'People'], ['vendors', 'Vendors'], ['insights', 'Insights'], ['activity', 'Activity'], ['notifications', 'Notifications'], ['account', 'Account']],
+    MANAGER:    [['overview', 'Overview'], ['requests', 'Requests'], ['properties', 'Properties'], ['people', 'People'], ['vendors', 'Vendors'], ['insights', 'Insights'], ['activity', 'Activity'], ['loadtest', 'Load testing'], ['notifications', 'Notifications'], ['account', 'Account']],
     TECHNICIAN: [['overview', 'Overview'], ['requests', 'My jobs'], ['notifications', 'Notifications'], ['account', 'Account']],
     VENDOR:     [['overview', 'Overview'], ['requests', 'Work orders'], ['company', 'Company'], ['notifications', 'Notifications'], ['account', 'Account']]
   };
@@ -90,9 +92,9 @@
     return { name: h[0] || 'overview', arg: h[1] };
   }
   function renderNav(active, unread) {
-    $('nav').innerHTML = NAV[me.role].map(function (n) {
+    $('nav').innerHTML = NAV[me.role].filter(function (n) { return n[0] !== 'loadtest' || me.orgAdmin; }).map(function (n) {
       var t = (me.role === 'TENANT' && n[0] === 'requests') ? 'My requests' : n[1];
-      return '<a href="#/' + n[0] + '"' + (n[0] === active ? ' aria-current="page"' : '') + '><svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="' + ICON[n[0]] + '" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="lbl">' + esc(t) + '</span>' +
+      return '<a href="' + (n[0] === 'loadtest' ? 'loadtest.html' : '#/' + n[0]) + '"' + (n[0] === active ? ' aria-current="page"' : '') + '><svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="' + ICON[n[0]] + '" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="lbl">' + esc(t) + '</span>' +
         (n[0] === 'notifications' && unread ? '<span class="badge dotn">' + unread + '</span>' : '') + '</a>';
     }).join('');
   }
@@ -100,6 +102,7 @@
   var VIEWS = {};
   function go() {
     var r = route();
+    if (r.name === 'loadtest') { location.replace('loadtest.html'); return; }
     var allowed = NAV[me.role].map(function (n) { return n[0]; });
     var name = r.name === 'request' ? 'requests' : r.name;
     if (allowed.indexOf(name) < 0) { location.hash = '#/overview'; return; }
@@ -115,7 +118,7 @@
     });
     document.title = $('viewTitle').textContent + ' — EstateOps';
   }
-  function show(html) { $('panes').innerHTML = html; }
+  function show() { $('panes').innerHTML = Array.prototype.join.call(arguments, ''); }
   function reload() { go(); }
 
   /* ---------------- request table ---------------- */
@@ -318,7 +321,7 @@
         }).join('') + '</tbody></table></div>' : '<div class="panel-body"><p class="note">No invitations waiting.</p></div>';
         var people = '<div class="sheet"><table class="data data--wide"><thead><tr><th>Name</th><th>Role</th><th>Email</th><th>Status</th><th></th></tr></thead><tbody>' + team.map(function (t) {
           return '<tr><td class="strong">' + esc(t.fullName) + (t.skills ? '<div class="sub">' + esc(t.skills) + '</div>' : '') + (t.vendorName ? '<div class="sub">' + esc(t.vendorName) + '</div>' : '') + '</td><td>' + esc(nice(t.role)) + (t.orgAdmin ? ' <span class="pill">Admin</span>' : '') + '</td><td class="sub">' + esc(t.email) + '</td><td>' + (t.active ? 'Active' : '<span class="pill pill--urgent">Deactivated</span>') + '</td><td>' +
-            (t.email === me.email ? '' : '<div class="actions"><button class="btn btn--sm btn--quiet" data-act="toggle" data-id="' + t.id + '" data-active="' + (t.active ? 'false' : 'true') + '">' + (t.active ? 'Deactivate' : 'Reactivate') + '</button><button class="btn btn--sm btn--quiet" data-act="reset" data-id="' + t.id + '">Reset link</button></div>') + '</td></tr>';
+            (t.email === me.email ? '' : '<div class="actions"><button class="btn btn--sm btn--quiet" data-act="toggle" data-id="' + t.id + '" data-active="' + (t.active ? 'false' : 'true') + '">' + (t.active ? 'Deactivate' : 'Reactivate') + '</button><button class="btn btn--sm btn--quiet" data-act="reset" data-id="' + t.id + '">Reset link</button><button class="btn btn--sm btn--quiet" data-act="mfaReset" data-id="' + t.id + '" title="Use when someone lost their phone">Reset two-factor</button>' + (t.active ? '' : '<button class="btn btn--sm btn--quiet" data-act="erase" data-id="' + t.id + '" title="Remove this person\'s name and contact details for good">Erase personal data</button>') + '</div>') + '</td></tr>';
         }).join('') + '</tbody></table></div><div class="panel-body" id="resetResult" style="padding-top:0"></div>';
         var orgForm = '<form class="form panel-body" id="orgForm"><div class="form-grid">' + fieldRow('Organization name', '<input class="field field--sm" id="oName" value="' + esc(org.name) + '"' + (org.isAdmin ? '' : ' disabled') + '>') + fieldRow('Approval limit <span class="opt">(managers other than the admin cannot approve above this; empty = no limit)</span>', '<input class="field field--sm" id="oLimit" type="number" min="0.01" step="0.01" value="' + (org.approvalLimit == null ? '' : org.approvalLimit) + '"' + (org.isAdmin ? '' : ' disabled') + '>') + '</div><p class="alert" id="oErr" role="alert"></p>' + (org.isAdmin ? '<div><button class="btn btn--sm btn--line" type="submit">Save</button></div>' : '<p class="note">Only the organization admin can change these.</p>') + '</form>';
         show(panel('Invite someone', invite) + panel('Waiting for a reply', pend) + panel('People in ' + org.name, people) + panel('Organization settings', orgForm));
@@ -378,12 +381,43 @@
   };
 
   /* ================= account ================= */
+  function mfaPanel(m) {
+    var banner = m.mfaRequired ? '<p class="alert" style="display:block;margin:0 0 12px">Your organization requires managers to use two-factor sign-in. Set it up here to continue.</p>' : '';
+    if (m.mfaEnabled) {
+      return '<form class="form panel-body" id="mfaOffForm">' + banner + '<p class="note" style="margin:0 0 10px">Two-factor sign-in is <b>on</b>. To turn it off, confirm with your password and a current code (or a recovery code).</p><div class="form-grid">' +
+        fieldRow('Password', '<input class="field" id="mfoPw" type="password" autocomplete="current-password">') + fieldRow('Code', '<input class="field" id="mfoCode" inputmode="numeric" autocomplete="one-time-code" maxlength="12">') +
+        '</div><p class="alert" id="mfoErr" role="alert"></p><div><button class="btn btn--sm btn--line" type="submit">Turn off two-factor</button></div></form>';
+    }
+    return '<div class="panel-body" id="mfaBox">' + banner + '<p class="note" style="margin:0 0 10px">Add a second step to signing in: a 6-digit code from an authenticator app such as Google Authenticator, Microsoft Authenticator or 1Password.</p>' +
+      '<form class="form" id="mfaStartForm"><div class="form-grid">' + fieldRow('Your password', '<input class="field" id="mfsPw" type="password" autocomplete="current-password">') + '</div><p class="alert" id="mfsErr" role="alert"></p><div><button class="btn btn--sm" type="submit">Set up two-factor</button></div></form></div>';
+  }
+  function dataPanel() {
+    return '<div class="panel-body"><p class="note" style="margin:0 0 10px">You can download everything EstateOps holds about you, or ask for your account to be erased.</p>' +
+      '<div class="actions" style="margin-bottom:16px"><button class="btn btn--sm btn--line" data-act="exportData">Download my data</button></div>' +
+      '<form class="form" id="deleteAccountForm"><p class="note" style="margin:0 0 10px"><b>Erase my account.</b> Your name, email, phone and anything you wrote are removed for good. Maintenance records for the property stay, shown as “Deleted user”. This cannot be undone.</p><div class="form-grid">' +
+      fieldRow('Your password', '<input class="field" id="delPw" type="password" autocomplete="current-password">') +
+      fieldRow('Type DELETE to confirm', '<input class="field" id="delConfirm" autocomplete="off" placeholder="DELETE">') +
+      '</div><p class="alert" id="delErr" role="alert"></p><div><button class="btn btn--sm btn--line" type="submit">Erase my account</button></div></form></div>';
+  }
+  function sessionsPanel(list) {
+    var rows = list.map(function (s) {
+      return '<tr><td>' + esc((s.device || 'Unknown device').slice(0, 70)) + (s.current ? ' <span class="tag">This device</span>' : '') + '</td><td class="sub">' + esc(s.ip || '') + '</td><td class="sub">' + esc(new Date(s.lastSeenAt).toLocaleString()) + '</td><td>' +
+        (s.current ? '' : '<button class="btn btn--sm btn--quiet" data-act="endSession" data-id="' + s.id + '">Sign out</button>') + '</td></tr>';
+    }).join('');
+    return '<div class="sheet"><table class="data"><thead><tr><th>Device</th><th>Address</th><th>Last active</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      '<div class="panel-foot"><span class="grow"><button class="btn btn--sm btn--line" data-act="logoutAll">Sign out everywhere</button></span></div>';
+  }
+
   VIEWS.account = function () {
-    return get('/auth/me').then(function (m) {
+    return Promise.all([get('/auth/me'), get('/auth/sessions')]).then(function (res) {
+      var m = res[0], sessions = res[1];
       me = m;
       show(panel('Your profile', '<form class="form panel-body" id="profileForm"><div class="form-grid">' + fieldRow('Full name', '<input class="field" id="aName" maxlength="120" value="' + esc(m.fullName) + '">') + fieldRow('Email', '<input class="field" value="' + esc(m.email) + '" disabled>') + fieldRow('Phone', '<input class="field" id="aPhone" maxlength="40" value="' + esc(m.phone || '') + '">') +
         (m.role === 'TECHNICIAN' ? fieldRow('Skills and trades', '<input class="field" id="aSkills" maxlength="200" value="' + esc(m.skills || '') + '">') : '') + fieldRow('Role', '<input class="field" value="' + esc(nice(m.role)) + (m.vendorName ? ' at ' + esc(m.vendorName) : '') + (m.organizationName ? ' · ' + esc(m.organizationName) : '') + '" disabled>', true) + '</div><p class="alert" id="prErr" role="alert"></p><div><button class="btn btn--sm" type="submit">Save profile</button></div></form>') +
-        panel('Change password', '<form class="form panel-body" id="pwForm"><div class="form-grid">' + fieldRow('Current password', '<input class="field" id="pwCur" type="password" autocomplete="current-password">') + fieldRow('New password', '<input class="field" id="pwNew" type="password" autocomplete="new-password" placeholder="At least 8 characters">') + '</div><p class="alert" id="pwErr" role="alert"></p><div><button class="btn btn--sm" type="submit">Change password</button></div><p class="note">Changing your password signs you out on your other devices.</p></form>'));
+        panel('Change password', '<form class="form panel-body" id="pwForm"><div class="form-grid">' + fieldRow('Current password', '<input class="field" id="pwCur" type="password" autocomplete="current-password">') + fieldRow('New password', '<input class="field" id="pwNew" type="password" autocomplete="new-password" placeholder="At least 8 characters">') + '</div><p class="alert" id="pwErr" role="alert"></p><div><button class="btn btn--sm" type="submit">Change password</button></div><p class="note">Changing your password signs you out on your other devices.</p></form>'),
+        panel('Two-factor sign-in', mfaPanel(m)),
+        panel('Where you are signed in', sessionsPanel(sessions)),
+        panel('Your data', dataPanel()));
     });
   };
 
@@ -431,8 +465,25 @@
     revoke: function (el) { send('/invitations/' + el.dataset.id + '/revoke').then(function () { done('Invitation revoked.'); }).catch(fail); },
     toggle: function (el) { send('/accounts/' + el.dataset.id + '/status', { active: el.dataset.active === 'true' }).then(function () { done('Account updated.'); }).catch(fail); },
     reset: function (el) {
-      send('/accounts/' + el.dataset.id + '/reset-link').then(function (r) { $('resetResult').innerHTML = linkBox(r.path, 'Password reset link for ' + r.email + '.'); }).catch(fail);
+      send('/accounts/' + el.dataset.id + '/reset-link').then(function (r) { $('resetResult').innerHTML = linkBox(r.path, 'Password reset link for ' + r.email + '.', r.emailed); }).catch(fail);
     },
+    erase: function (el) {
+      if (!window.confirm('Erase this person\'s personal data? Their name, email and phone are removed for good. Maintenance records stay, shown as “Deleted user”. This cannot be undone.')) return;
+      send('/accounts/' + el.dataset.id + '/erase', { confirm: 'ERASE' }).then(function () { done('Personal data erased.'); }).catch(fail);
+    },
+    mfaReset: function (el) { if (!window.confirm('Switch off two-factor sign-in for this person? Use this only if they lost their phone and recovery codes.')) return; send('/accounts/' + el.dataset.id + '/mfa-reset').then(function () { done('Two-factor sign-in was switched off for that person.'); }).catch(fail); },
+    exportData: function (el) {
+      busy(el, true, 'Preparing…');
+      api('/auth/my-data').then(function (r) {
+        var u = URL.createObjectURL(new Blob([JSON.stringify(r.data, null, 2)], { type: 'application/json' }));
+        var a = document.createElement('a'); a.href = u; a.download = 'estateops-my-data.json'; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function () { URL.revokeObjectURL(u); }, 10000);
+        busy(el, false); flash('Your data was downloaded.', true);
+      }).catch(function (e) { busy(el, false); fail(e); });
+    },
+    endSession: function (el) { send('/auth/sessions/' + el.dataset.id + '/revoke').then(function () { done('Device signed out.'); }).catch(fail); },
+    logoutAll: function () { send('/auth/logout-all').then(leave).catch(fail); },
+    reloadAccount: function () { reload(); },
     inviteVendor: function (el) { pendingInvite = { role: 'VENDOR', vendorId: el.dataset.id }; location.hash = '#/people'; },
     notif: function (el) { send('/notifications/' + el.dataset.id + '/read').then(function () { location.hash = '#/request/' + el.dataset.req; }).catch(function () { location.hash = '#/request/' + el.dataset.req; }); },
     readall: function () { send('/notifications/read-all').then(function () { reload(); }).catch(fail); }
@@ -524,7 +575,7 @@
       busy(btn, true);
       send('/invitations', body).then(function (r) {
         busy(btn, false); $('iErr').textContent = ''; $('iEmail').value = '';
-        $('iResult').innerHTML = linkBox(r.path, 'Invitation created for ' + r.email + '.');
+        $('iResult').innerHTML = linkBox(r.path, 'Invitation created for ' + r.email + '.', r.emailed);
       }).catch(function (e) { busy(btn, false); inlineErr('iErr', e); });
     },
     orgForm: function (f, btn) {
@@ -543,6 +594,32 @@
     profileForm: function (f, btn) {
       busy(btn, true);
       send('/auth/profile', { fullName: $('aName').value.trim(), phone: $('aPhone').value.trim(), skills: $('aSkills') ? $('aSkills').value.trim() : undefined }, 'PUT').then(function (m) { me = m; fillUser(); done('Profile saved.'); }).catch(function (e) { busy(btn, false); inlineErr('prErr', e); });
+    },
+    mfaStartForm: function (f, btn) {
+      busy(btn, true);
+      send('/auth/mfa/setup', { password: $('mfsPw').value }).then(function (r) {
+        $('mfaBox').innerHTML = '<p class="note" style="margin:0 0 10px"><b>1.</b> In your authenticator app choose “Enter a setup key” and type this key (account: ' + esc(me.email) + ', type: time-based):</p><p><code style="font-size:15px;letter-spacing:.08em;word-break:break-all">' + esc(r.secret.replace(/(.{4})/g, '$1 ').trim()) + '</code></p>' +
+          '<p class="note" style="margin:10px 0"><b>2.</b> Enter the 6-digit code the app now shows:</p><form class="form" id="mfaEnableForm"><div class="form-grid">' + fieldRow('Code', '<input class="field" id="mfeCode" inputmode="numeric" autocomplete="one-time-code" maxlength="8">') + '</div><p class="alert" id="mfeErr" role="alert"></p><div><button class="btn btn--sm" type="submit">Turn on two-factor</button></div></form>';
+        $('mfeCode').focus();
+      }).catch(function (e) { busy(btn, false); inlineErr('mfsErr', e); });
+    },
+    mfaEnableForm: function (f, btn) {
+      busy(btn, true);
+      send('/auth/mfa/enable', { code: $('mfeCode').value }).then(function (r) {
+        $('mfaBox').innerHTML = '<p><b>Two-factor sign-in is on.</b></p><p class="note" style="margin:8px 0">Save these recovery codes somewhere safe, such as a password manager. Each one works once if you lose your phone. <b>They are shown only now.</b></p>' +
+          '<pre style="background:var(--paper-2);padding:12px;border-radius:6px;columns:2;margin:0 0 12px">' + r.recoveryCodes.map(esc).join('\n') + '</pre><button class="btn btn--sm" data-act="reloadAccount">I have saved them</button>';
+      }).catch(function (e) { busy(btn, false); inlineErr('mfeErr', e); });
+    },
+    mfaOffForm: function (f, btn) {
+      busy(btn, true);
+      send('/auth/mfa/disable', { password: $('mfoPw').value, code: $('mfoCode').value }).then(function () { done('Two-factor sign-in turned off.'); }).catch(function (e) { busy(btn, false); inlineErr('mfoErr', e); });
+    },
+    deleteAccountForm: function (f, btn) {
+      if (!window.confirm('Erase your account? This cannot be undone.')) return;
+      busy(btn, true);
+      send('/auth/delete-account', { password: $('delPw').value, confirm: $('delConfirm').value }).then(function () {
+        window.alert('Your account has been erased.'); leave();
+      }).catch(function (e) { busy(btn, false); inlineErr('delErr', e); });
     },
     pwForm: function (f, btn) {
       busy(btn, true);

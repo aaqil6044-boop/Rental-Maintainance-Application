@@ -45,7 +45,7 @@ const dumped = JSON.stringify(spec);
 const refs = [...dumped.matchAll(/#\/components\/schemas\/(\w+)/g)].map((m) => m[1]);
 ok("every $ref points at a real schema", refs.every((r) => spec.components.schemas[r]), refs.filter((r) => !spec.components.schemas[r]));
 const publicOps = []; for (const [p, ops] of Object.entries(spec.paths)) for (const [m, o] of Object.entries(ops)) if (o.security && o.security.length === 0) publicOps.push(m + " " + p);
-ok("public operations are exactly the intended ones", publicOps.sort().join("|") === ["get /api/setup/status", "post /api/setup", "post /api/auth/register", "post /api/auth/login", "get /api/invitations/lookup", "post /api/invitations/accept", "get /health"].sort().join("|"), publicOps);
+ok("public operations are exactly the intended ones", publicOps.sort().join("|") === ["get /api/setup/status", "post /api/setup", "post /api/auth/register", "post /api/auth/login", "get /api/invitations/lookup", "post /api/invitations/accept", "post /api/auth/forgot-password", "post /api/auth/reset-password", "post /api/auth/verify-email", "post /api/auth/mfa/verify", "get /health"].sort().join("|"), publicOps);
 
 /* ---------------------------------------------------------------- 3. live contract */
 const ajv = new Ajv({ strict: false, allErrors: true, validateFormats: false });
@@ -75,7 +75,7 @@ async function call(method, p, token, body, raw) {
     body: raw ? raw : body !== undefined ? JSON.stringify(body) : undefined });
   const text = await res.text(); let data = null;
   if (text) { try { data = JSON.parse(text); } catch (e) { data = text; } }
-  return { status: res.status, data };
+  return { status: res.status, data, type: (res.headers.get("content-type") || "").split(";")[0] };
 }
 /** Calls the real server and validates the reply against what the document promises for that status. */
 async function contract(label, method, template, actual, token, body, expectStatus, raw) {
@@ -83,7 +83,8 @@ async function contract(label, method, template, actual, token, body, expectStat
   const op = spec.paths[template] && spec.paths[template][method.toLowerCase()];
   const doc = op && op.responses[r.status];
   if (!ok(`${label}: ${r.status} is a documented response`, r.status === expectStatus && !!doc, [r.status, r.data && r.data.message])) return r;
-  const media = doc.content && doc.content["application/json"];
+  const media = doc.content && doc.content[r.type || "application/json"];
+  ok(`${label}: content type ${r.type || "none"} is documented`, !doc.content || !r.type || !!media, r.type);
   if (media && r.data !== null) {
     const v = validatorFor(media.schema);
     const valid = v(r.data);
@@ -187,6 +188,48 @@ const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
   await contract("mark all read", "POST", "/api/notifications/read-all", "/api/notifications/read-all", tok.T, undefined, 204);
   const pw = await contract("change password", "POST", "/api/auth/change-password", "/api/auth/change-password", acc.data.token, { currentPassword: "Str0ngPassw0rd", newPassword: "An0therStr0ngOne" }, 200);
   await contract("logout", "POST", "/api/auth/logout", "/api/auth/logout", pw.data.token, undefined, 204);
+
+  section("5. Load-testing endpoints match their documented schemas");
+  const LT = { name: "Docs contract run", durationSec: 5, startUsers: 1, maxUsers: 2, rampUpSec: 1, rampDownSec: 1, thinkMinMs: 20, thinkMaxMs: 60, pacingMs: 30, seed: 3, maxCreates: 5 };
+  const waitRun = async (rid) => { for (let i = 0; i < 100; i++) { const r = await call("GET", `/api/loadtests/${rid}`, tok.M); if (["COMPLETED", "FAILED", "CANCELLED"].includes(r.data.state)) return r.data; await new Promise((x) => setTimeout(x, 300)); } };
+  await contract("loadtest setup", "GET", "/api/loadtests/config", "/api/loadtests/config", tok.M, undefined, 200);
+  await contract("loadtest validate (valid)", "POST", "/api/loadtests/validate", "/api/loadtests/validate", tok.M, LT, 200);
+  await contract("loadtest validate (invalid)", "POST", "/api/loadtests/validate", "/api/loadtests/validate", tok.M, { maxUsers: 0 }, 200);
+  await contract("loadtest list (empty)", "GET", "/api/loadtests", "/api/loadtests", tok.M, undefined, 200);
+  await contract("loadtest invalid start", "POST", "/api/loadtests", "/api/loadtests", tok.M, { maxUsers: 0 }, 400);
+  await contract("loadtest tenant refused", "GET", "/api/loadtests", "/api/loadtests", tok.T, undefined, 403);
+  const lt1 = await contract("loadtest start", "POST", "/api/loadtests", "/api/loadtests", tok.M, LT, 201);
+  await contract("loadtest overlap", "POST", "/api/loadtests", "/api/loadtests", tok.M, LT, 409);
+  await contract("loadtest live detail", "GET", "/api/loadtests/{id}", `/api/loadtests/${lt1.data.id}`, tok.M, undefined, 200);
+  const d1 = await waitRun(lt1.data.id);
+  await contract("loadtest finished detail", "GET", "/api/loadtests/{id}", `/api/loadtests/${lt1.data.id}`, tok.M, undefined, 200);
+  await contract("loadtest missing", "GET", "/api/loadtests/{id}", "/api/loadtests/99999", tok.M, undefined, 404);
+  await contract("loadtest export json", "GET", "/api/loadtests/{id}/export", `/api/loadtests/${lt1.data.id}/export?format=json`, tok.M, undefined, 200);
+  await contract("loadtest export bad format", "GET", "/api/loadtests/{id}/export", `/api/loadtests/${lt1.data.id}/export?format=xml`, tok.M, undefined, 400);
+  const lt2 = await contract("loadtest second start", "POST", "/api/loadtests", "/api/loadtests", tok.M, { ...LT, name: "Docs contract run 2", durationSec: 40 }, 201);
+  await new Promise((x) => setTimeout(x, 1800));
+  await contract("loadtest stop", "POST", "/api/loadtests/{id}/stop", `/api/loadtests/${lt2.data.id}/stop`, tok.M, { mode: "graceful" }, 200);
+  await waitRun(lt2.data.id);
+  await contract("loadtest stop finished", "POST", "/api/loadtests/{id}/stop", `/api/loadtests/${lt2.data.id}/stop`, tok.M, {}, 409);
+  await contract("loadtest compare", "GET", "/api/loadtests/compare", `/api/loadtests/compare?ids=${lt1.data.id},${lt2.data.id}`, tok.M, undefined, 200);
+  await contract("loadtest compare needs two", "GET", "/api/loadtests/compare", `/api/loadtests/compare?ids=${lt1.data.id}`, tok.M, undefined, 400);
+  await contract("loadtest data check", "GET", "/api/loadtests/data", "/api/loadtests/data", tok.M, undefined, 200);
+  await contract("loadtest trends", "GET", "/api/loadtests/trends", "/api/loadtests/trends", tok.M, undefined, 200);
+  await contract("loadtest regression (previous run)", "GET", "/api/loadtests/{id}/regression", `/api/loadtests/${lt2.data.id}/regression`, tok.M, undefined, 200);
+  await contract("loadtest regression (no known-good yet)", "GET", "/api/loadtests/{id}/regression", `/api/loadtests/${lt2.data.id}/regression?baseline=known-good`, tok.M, undefined, 200);
+  await contract("loadtest regression (bad baseline)", "GET", "/api/loadtests/{id}/regression", `/api/loadtests/${lt2.data.id}/regression?baseline=nonsense`, tok.M, undefined, 400);
+  await contract("loadtest mark known-good", "POST", "/api/loadtests/{id}/known-good", `/api/loadtests/${lt1.data.id}/known-good`, tok.M, { value: true }, 200);
+  await contract("loadtest known-good needs a boolean", "POST", "/api/loadtests/{id}/known-good", `/api/loadtests/${lt1.data.id}/known-good`, tok.M, { value: "yes" }, 400);
+  await contract("loadtest regression (known-good baseline)", "GET", "/api/loadtests/{id}/regression", `/api/loadtests/${lt2.data.id}/regression?baseline=known-good`, tok.M, undefined, 200);
+  await contract("loadtest export html report", "GET", "/api/loadtests/{id}/export", `/api/loadtests/${lt1.data.id}/export?format=html`, tok.M, undefined, 200);
+  await contract("loadtest export csv", "GET", "/api/loadtests/{id}/export", `/api/loadtests/${lt1.data.id}/export?format=csv&part=endpoints`, tok.M, undefined, 200);
+  await contract("loadtest export bad csv part", "GET", "/api/loadtests/{id}/export", `/api/loadtests/${lt1.data.id}/export?format=csv&part=nope`, tok.M, undefined, 400);
+  await contract("loadtest unmark known-good", "POST", "/api/loadtests/{id}/known-good", `/api/loadtests/${lt1.data.id}/known-good`, tok.M, { value: false }, 200);
+  await contract("loadtest list", "GET", "/api/loadtests", "/api/loadtests", tok.M, undefined, 200);
+  await contract("loadtest run cleanup", "POST", "/api/loadtests/{id}/cleanup", `/api/loadtests/${lt1.data.id}/cleanup`, tok.M, undefined, 200);
+  await contract("loadtest cleanup all", "POST", "/api/loadtests/cleanup", "/api/loadtests/cleanup", tok.M, undefined, 200);
+  await contract("loadtest emergency stop (nothing running)", "POST", "/api/loadtests/stop-all", "/api/loadtests/stop-all", tok.M, undefined, 200);
+  ok("the contract run itself completed", d1 && d1.state === "COMPLETED", d1 && [d1.state, d1.error]);
 
   server.close();
   require("fs").rmSync(DIR, { recursive: true, force: true });

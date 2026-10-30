@@ -224,6 +224,120 @@ const MIGRATIONS = [
       }
     },
   },
+  {
+    id: 3,
+    name: "load test runs",
+    up(db) {
+      db.exec(`
+        CREATE TABLE loadtest_runs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          org_id INTEGER NOT NULL,
+          started_by INTEGER NOT NULL REFERENCES accounts(id),
+          name TEXT NOT NULL,
+          target TEXT NOT NULL,
+          state TEXT NOT NULL CHECK (state IN ('VALIDATING','RUNNING','STOPPING','COMPLETED','FAILED','CANCELLED')),
+          verdict TEXT CHECK (verdict IN ('PASSED','FAILED','INCONCLUSIVE')),
+          stop_reason TEXT,
+          error TEXT,
+          seed INTEGER,
+          config_json TEXT NOT NULL,
+          summary_json TEXT,
+          thresholds_json TEXT,
+          warnings_json TEXT,
+          resources_json TEXT,
+          created_records INTEGER NOT NULL DEFAULT 0,
+          cleaned_up INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL,
+          started_at TEXT,
+          finished_at TEXT
+        );
+        CREATE INDEX ix_loadtest_org ON loadtest_runs(org_id, id);
+        CREATE INDEX ix_loadtest_state ON loadtest_runs(state);
+      `);
+    },
+  },
+  {
+    id: 4,
+    name: "performance testing center: run metadata and known-good reference",
+    up(db) {
+      db.exec(`
+        ALTER TABLE loadtest_runs ADD COLUMN meta_json TEXT;
+        ALTER TABLE loadtest_runs ADD COLUMN known_good INTEGER NOT NULL DEFAULT 0;
+      `);
+    },
+  },
+  {
+    id: 5,
+    name: "response cache: shared version counters (one per organization plus a global one)",
+    up(db) {
+      db.exec(`CREATE TABLE cache_versions (scope TEXT PRIMARY KEY, v INTEGER NOT NULL DEFAULT 0);`);
+    },
+  },
+  {
+    id: 6,
+    name: "indexes for the lookups every page makes (requests by unit and date; history, comments and expenses by request)",
+    up(db) {
+      db.exec(`
+        CREATE INDEX IF NOT EXISTS ix_req_unit ON requests(unit_id);
+        CREATE INDEX IF NOT EXISTS ix_req_created ON requests(created_at);
+        CREATE INDEX IF NOT EXISTS ix_events_request ON events(request_id);
+        CREATE INDEX IF NOT EXISTS ix_comments_request ON comments(request_id);
+        CREATE INDEX IF NOT EXISTS ix_expenses_request ON expenses(request_id);
+        CREATE INDEX IF NOT EXISTS ix_units_property ON units(property_id);
+        CREATE INDEX IF NOT EXISTS ix_invitations_org ON invitations(org_id);
+      `);
+    },
+  },
+  {
+    id: 7,
+    name: "email: verified flag on accounts and single-use account tokens (self-service password reset, email verification)",
+    up(db) {
+      db.exec(`
+        ALTER TABLE accounts ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0;
+        UPDATE accounts SET email_verified = 1;          -- accounts that exist today keep working exactly as before
+        CREATE TABLE account_tokens (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          token_hash TEXT NOT NULL UNIQUE,
+          purpose TEXT NOT NULL CHECK (purpose IN ('RESET','VERIFY')),
+          account_id INTEGER NOT NULL REFERENCES accounts(id),
+          expires_at TEXT NOT NULL,
+          used_at TEXT,
+          created_at TEXT NOT NULL
+        );
+        CREATE INDEX ix_account_tokens_account ON account_tokens(account_id, purpose);
+      `);
+    },
+  },
+  {
+    id: 8,
+    name: "sessions (one per sign-in, so a device can sign out alone) and two-factor sign-in (TOTP secret, recovery codes)",
+    up(db) {
+      db.exec(`
+        CREATE TABLE sessions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          sid TEXT NOT NULL UNIQUE,
+          account_id INTEGER NOT NULL REFERENCES accounts(id),
+          created_at TEXT NOT NULL,
+          last_seen_at TEXT NOT NULL,
+          expires_at TEXT NOT NULL,
+          revoked_at TEXT,
+          ip TEXT,
+          user_agent TEXT
+        );
+        CREATE INDEX ix_sessions_account ON sessions(account_id);
+        ALTER TABLE accounts ADD COLUMN mfa_enabled INTEGER NOT NULL DEFAULT 0;
+        ALTER TABLE accounts ADD COLUMN mfa_secret TEXT;
+        ALTER TABLE accounts ADD COLUMN mfa_last_step INTEGER NOT NULL DEFAULT 0;
+        CREATE TABLE mfa_recovery (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          account_id INTEGER NOT NULL REFERENCES accounts(id),
+          code_hash TEXT NOT NULL,
+          used_at TEXT
+        );
+        CREATE INDEX ix_mfa_recovery_account ON mfa_recovery(account_id);
+      `);
+    },
+  },
 ];
 
 module.exports = MIGRATIONS;

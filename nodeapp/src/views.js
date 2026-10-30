@@ -1,14 +1,21 @@
 "use strict";
 const { allowedNext, isOpen, mayTransition } = require("./rules");
 
+const config = require("./config");
+
+// Dates are shown in the configured time zone (TIMEZONE), not whatever zone the server or container happens to use.
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const PARTS = new Intl.DateTimeFormat("en-GB", { timeZone: config.timezone, day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+const DAY = new Intl.DateTimeFormat("en-CA", { timeZone: config.timezone, year: "numeric", month: "2-digit", day: "2-digit" });
 function stamp(iso) {
   if (!iso) return null;
-  const d = new Date(iso);
-  const pad = (n) => String(n).padStart(2, "0");
-  return `${pad(d.getDate())} ${MONTHS[d.getMonth()]} ${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const when = new Date(iso);
+  if (Number.isNaN(when.getTime())) return null;
+  const p = Object.fromEntries(PARTS.formatToParts(when).map((x) => [x.type, x.value]));
+  return `${p.day} ${MONTHS[Number(p.month) - 1]} ${p.year}, ${p.hour}:${p.minute}`;
 }
-const today = () => new Date().toISOString().slice(0, 10);
+/** Today's date (YYYY-MM-DD) where the organization is: a due date is overdue only after that day has ended there. */
+const today = () => DAY.format(new Date());
 const money = (cents) => Math.round(cents) / 100;
 const isOverdue = (row) => !!row.due_date && isOpen(row.status) && row.due_date < today();
 
@@ -45,7 +52,8 @@ const notificationView = (n) => ({ id: n.id, message: n.message, requestId: n.re
 const accountView = (a) => ({ id: a.id, email: a.email, fullName: a.full_name, role: a.role });
 const meView = (a) => ({
   id: a.id, email: a.email, fullName: a.full_name, role: a.role,
-  organizationName: a.org_name || null, orgAdmin: !!a.org_admin,
+  organizationName: a.org_name || null, orgAdmin: !!a.org_admin, emailVerified: !!a.email_verified, mfaEnabled: !!a.mfa_enabled,
+  mfaRequired: !!(config.mfa.requireForManagers && a.role === "MANAGER" && !a.mfa_enabled),
   phone: a.phone || null, skills: a.skills || null, profileComplete: !!a.profile_complete,
   vendorId: a.vendor_id || null, vendorName: a.vendor_name || null, vendorStatus: a.vendor_status || null,
 });

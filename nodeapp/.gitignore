@@ -3,3 +3,8 @@ data
 data-fresh
 .env
 *.log
+report
+
+config/*.env
+!config/local.env
+!config/*.env.example

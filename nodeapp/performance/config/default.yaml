@@ -1,0 +1,59 @@
+# EstateOps performance test: the defaults. Every other file in this folder overrides parts of it conceptually,
+# but each file is self-contained, so you can copy any one and edit it.
+#
+# Durations: 500ms, 30s, 2m, 1h.  "duration" is the TOTAL and INCLUDES the ramps:
+#   steady state = duration - rampUp - rampDown
+name: Standard load test
+description: A realistic mix of tenants, managers, technicians, vendors and admins ramping up gradually.
+environment:
+  name: local            # local = this machine's own server. Anything else needs --confirm and server-side permission.
+  # baseUrl: http://localhost:8080   # leave out to start a throw-away server with sample data
+profile: linear          # linear | step | spike | soak | custom
+duration: 3m
+users:
+  initial: 2
+  max: 25
+rampUp: 60s
+rampDown: 20s
+seed: 1                  # same seed = same traffic pattern. Change it (or remove it) for a different one.
+randomization: 60        # 0 = predictable, 100 = fully varied
+trafficShare:            # share of users by role
+  tenant: 56
+  propertyManager: 20
+  technician: 10
+  vendor: 9
+  admin: 5
+  owner: 0               # NOT AVAILABLE: EstateOps has no owner account role. Must stay 0.
+thinkTime:               # pauses a person takes. The defaults are scaled-down so a short test still generates traffic.
+  min: 300ms
+  max: 1500ms
+  # realistic (slow) pauses per kind of action:
+  # read: [3s, 8s]       # dashboards, lists
+  # form: [10s, 30s]     # filling in a form
+  # review: [5s, 15s]    # reviewing a quotation or invoice
+pacing: 500ms
+sessions:                # a user signs in once, runs this many journeys, then leaves and a new user arrives
+  minJourneys: 4
+  maxJourneys: 14
+testData:
+  orgs: 2                # independent test organizations (multi-tenant)
+  cleanup: true          # delete this run's test records afterwards
+  writes: true
+  maxCreates: 300
+security:
+  checkPercent: 6        # % of journeys that also run negative authorization / cross-tenant checks
+thresholds:
+  p95Ms: 800
+  p99Ms: 1500
+  errorRatePct: 1
+  securityLeaks: 0
+regression:              # when is a run worse than its baseline?
+  p95LatencyIncreasePercent: 15
+  p99LatencyIncreasePercent: 20
+  throughputDecreasePercent: 10
+  errorRateIncreasePercentagePoints: 0.5
+  # endpoints:
+  #   "GET /api/dashboard": { p95LatencyIncreasePercent: 25 }
+  # journeys:
+  #   tenant.report: { p95LatencyIncreasePercent: 30 }
+baseline: previous       # previous | known-good | path to a report.json

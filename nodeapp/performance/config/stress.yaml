@@ -1,0 +1,38 @@
+# Stress test: climb in steps to find where latency bends or errors start. Run on demand or nightly, never on every commit,
+# and never against production.
+name: Stress test
+environment:
+  name: local
+profile: step
+duration: 6m
+users:
+  initial: 5
+  max: 100
+rampUp: 3m
+rampDown: 30s
+steps: 6
+seed: 7
+trafficShare:
+  tenant: 50
+  propertyManager: 20
+  technician: 10
+  vendor: 12
+  admin: 8
+  owner: 0
+thinkTime:
+  min: 200ms
+  max: 1s
+pacing: 300ms
+testData:
+  orgs: 3
+  cleanup: true
+  writes: true
+  maxCreates: 1500
+security:
+  checkPercent: 4
+thresholds:
+  p95Ms: 2500
+  p99Ms: 5000
+  errorRatePct: 2
+  securityLeaks: 0
+baseline: previous

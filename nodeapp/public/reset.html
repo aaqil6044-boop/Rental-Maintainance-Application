@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reset password — EstateOps</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="styles.css">
+<style>
+  .center{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:32px 22px}
+  .box{width:100%;max-width:440px}
+  .box .wordmark{margin-bottom:26px}
+  .box form{display:flex;flex-direction:column;gap:16px;margin-top:18px}
+</style>
+</head>
+<body>
+<div class="center"><div class="box">
+  <a class="wordmark" href="index.html">EstateOps</a>
+  <h1 id="title" style="font-size:26px">Reset your password</h1>
+  <p class="say" id="blurb" style="color:var(--slate);margin-top:6px">Enter your email and we will send you a link to choose a new one.</p>
+  <form id="ask" novalidate>
+    <div><label for="email">Email</label><input id="email" class="field" type="email" autocomplete="email"></div>
+    <p class="alert" id="askErr" role="alert"></p>
+    <button class="btn btn--block" id="askBtn" type="submit">Send me a link</button>
+  </form>
+  <form id="set" hidden novalidate>
+    <div><label for="pw">New password</label><input id="pw" class="field" type="password" autocomplete="new-password" placeholder="At least 8 characters"></div>
+    <p class="alert" id="setErr" role="alert"></p>
+    <button class="btn btn--block" id="setBtn" type="submit">Save new password</button>
+  </form>
+  <p style="margin-top:22px;font-size:14px"><a href="login.html" style="color:var(--pine);text-decoration:underline">Back to sign in</a></p>
+</div></div>
+<script src="reset.js"></script>
+</body>
+</html>

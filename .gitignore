@@ -10,3 +10,10 @@ backend/data/
 # OS
 .DS_Store
 Thumbs.db
+
+# EstateOps Node app: never commit these
+nodeapp/*.zip
+nodeapp/data-prod/
+nodeapp/data-staging/
+nodeapp/backups/
+nodeapp/test-results/

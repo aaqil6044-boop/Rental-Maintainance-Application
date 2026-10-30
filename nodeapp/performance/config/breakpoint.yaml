@@ -1,0 +1,40 @@
+# Break-point search: climbs in six plateaus to 120 users with short think times. Read "By load stage" in the report: the break point is the
+# first step where throughput stops rising while latency keeps growing.
+# Stress test: climb in steps to find where latency bends or errors start. Run on demand or nightly, never on every commit,
+# and never against production.
+name: Break point
+environment:
+  name: local
+profile: step
+duration: 150s
+users:
+  initial: 5
+  max: 120
+rampUp: 105s
+rampDown: 15s
+steps: 6
+seed: 7
+trafficShare:
+  tenant: 50
+  propertyManager: 20
+  technician: 10
+  vendor: 12
+  admin: 8
+  owner: 0
+thinkTime:
+  min: 50ms
+  max: 200ms
+pacing: 50ms
+testData:
+  orgs: 2
+  cleanup: true
+  writes: true
+  maxCreates: 1500
+security:
+  checkPercent: 4
+thresholds:
+  p95Ms: 2500
+  p99Ms: 5000
+  errorRatePct: 2
+  securityLeaks: 0
+baseline: previous

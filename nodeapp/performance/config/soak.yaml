@@ -1,0 +1,43 @@
+# Soak test: a steady, moderate load for a long time, to expose slow leaks and drift (memory, database growth, creeping latency).
+# Needs a long steady state. 30 minutes is a sensible minimum; the dashboard/server cap is 30 minutes by default
+# (raise LOADTEST_MAX_DURATION_SEC to go longer).
+name: Soak test
+environment:
+  name: local
+profile: soak
+duration: 30m
+users:
+  initial: 5
+  max: 20
+rampUp: 2m
+rampDown: 1m
+seed: 3
+trafficShare:
+  tenant: 56
+  propertyManager: 20
+  technician: 10
+  vendor: 9
+  admin: 5
+  owner: 0
+thinkTime:
+  read: [2s, 6s]
+  form: [6s, 15s]
+  review: [4s, 10s]
+  min: 1s
+  max: 4s
+pacing: 2s
+sessions:
+  minJourneys: 6
+  maxJourneys: 30
+testData:
+  orgs: 2
+  cleanup: true
+  writes: true
+  maxCreates: 1800
+security:
+  checkPercent: 3
+thresholds:
+  p95Ms: 1000
+  errorRatePct: 0.5
+  securityLeaks: 0
+baseline: previous

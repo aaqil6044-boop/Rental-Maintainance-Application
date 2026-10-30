@@ -3,60 +3,248 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>EstateOps — Rental Maintenance, Managed in One Place</title>
-<meta name="description" content="Report maintenance issues, coordinate repairs, manage properties and track expenses from one platform.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;450;500;600&display=swap">
+<title>EstateOps — Every property. Every repair. One clear view.</title>
+<meta name="description" content="Rental maintenance, managed in one place. Tenant requests, technicians, vendors and repair costs in one organized workspace.">
+<link rel="stylesheet" href="fonts/fonts.css">
 <link rel="stylesheet" href="styles.css">
 <style>
-  .page{max-width:1000px;margin:0 auto;padding:0 24px}
+  /* Landing-page tokens. Brand colours come from styles.css; the ground is a warmer paper and the ink a deeper navy. */
+  .lp{
+    --bg:#F6F4EE; --bg-2:#EDEAE0; --card:#FFFFFF; --line:#DCD8CB; --line-2:#C9C4B4;
+    --navy:#0E1B24; --navy-2:#15273A; --text:#14222C; --muted:#586671;
+    --teal:#2B8577; --mist:#E2EEE9;
+    background:var(--bg);color:var(--text);
+  }
+  .lp .wrap{max-width:1160px;margin:0 auto;padding:0 clamp(18px,4vw,32px)}
+  .lp h1,.lp h2,.lp h3{color:var(--navy)}
+  .lp .btn{height:48px;padding:0 24px}
+  .lp .btn--navy{background:var(--navy)}
+  .lp .btn--navy:hover{background:var(--navy-2)}
+  .lp .btn--outline{background:transparent;color:var(--navy);box-shadow:inset 0 0 0 1px var(--line-2)}
+  .lp .btn--outline:hover{background:var(--card);box-shadow:inset 0 0 0 1px var(--navy)}
+  .lp .textlink{font-weight:500;font-size:15px;color:var(--pine);border-bottom:1px solid transparent;padding:6px 2px}
+  .lp .textlink:hover{border-bottom-color:currentColor}
 
-  header.top{border-bottom:1px solid var(--rule);background:var(--surface)}
-  .top-in{display:flex;align-items:center;height:62px;gap:14px}
-  .top .right{margin-left:auto;display:flex;align-items:center;gap:14px}
-  .top .signin{font-size:14.5px;font-weight:500}
+  /* ---------- header ---------- */
+  .nav{position:sticky;top:0;z-index:10;background:rgba(246,244,238,.92);backdrop-filter:saturate(1.2) blur(8px);border-bottom:1px solid var(--line)}
+  .nav-in{display:flex;align-items:center;height:64px;gap:28px}
+  .nav-links{display:flex;gap:26px;font-size:14.5px;color:var(--muted)}
+  .nav-links a:hover{color:var(--navy)}
+  .nav-cta{margin-left:auto;display:flex;align-items:center;gap:10px}
+  .nav-cta .signin{font-size:14.5px;font-weight:500;padding:8px 10px}
 
-  .hero{padding:clamp(48px,7vw,76px) 0 clamp(36px,5vw,52px)}
-  .hero h1{font-size:clamp(30px,4.4vw,44px);line-height:1.12;letter-spacing:-.025em;max-width:19ch;margin-bottom:16px}
-  .hero p{font-size:clamp(16px,1.7vw,18px);line-height:1.6;color:var(--slate);max-width:56ch;margin-bottom:26px}
-  .hero .cta{display:flex;gap:12px;flex-wrap:wrap}
+  /* ---------- hero ---------- */
+  .hero{padding:clamp(40px,6vw,84px) 0 clamp(48px,6vw,88px);overflow:hidden}
+  .hero-grid{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6.2fr);gap:clamp(32px,5vw,72px);align-items:center}
+  .eyebrow{font-size:13px;font-weight:600;letter-spacing:.09em;color:var(--pine);margin-bottom:18px}
+  .hero h1{font-size:clamp(36px,4.5vw,58px);line-height:1.04;letter-spacing:-.035em;margin-bottom:22px}
+  .hero h1 span{display:block;white-space:nowrap}
+  .lede{font-size:clamp(16.5px,1.5vw,19px);line-height:1.6;color:var(--muted);max-width:50ch;margin-bottom:30px}
+  .cta{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+  .hero .sub{margin-top:26px;font-size:14.5px;color:var(--muted);max-width:46ch;padding-left:14px;border-left:2px solid var(--teal)}
 
-  .band{padding:clamp(40px,5vw,60px) 0;border-top:1px solid var(--rule)}
-  .band h2{font-size:clamp(20px,2.4vw,25px);letter-spacing:-.02em;margin-bottom:26px}
+  /* product preview (illustrative) */
+  .preview{position:relative;padding:0 0 84px 0}
+  .win{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 1px 1px rgba(14,27,36,.04),0 30px 70px -34px rgba(14,27,36,.38);overflow:hidden}
+  .win-top{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--line);background:#FBFAF6}
+  .win-top b{font-family:var(--display);font-size:15px;letter-spacing:-.01em}
+  .win-top .tabs{margin-left:auto;display:flex;gap:6px}
+  .tab{font-size:12px;padding:4px 10px;border-radius:99px;color:var(--muted);background:var(--bg-2)}
+  .tab--on{background:var(--navy);color:#fff}
+  .rows{display:block}
+  .row3{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:14px;align-items:center;padding:13px 18px;border-bottom:1px solid #EEEBE1;font-size:13.5px}
+  .row3:last-child{border-bottom:0}
+  .row3 .t{font-weight:500;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .row3 .t small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+  .row3--sel{background:var(--mist)}
+  .chip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:500;padding:3px 9px;border-radius:99px;white-space:nowrap}
+  .chip::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+  .c-new{background:var(--wait-soft);color:var(--wait)}
+  .c-assigned{background:var(--calm-soft);color:var(--calm)}
+  .c-prog{background:var(--pine-soft);color:var(--pine)}
+  .c-done{background:#E8E6DD;color:#4B5560}
+  .pri{font-size:12px;color:var(--muted);width:56px;text-align:right}
+  .pri--urgent{color:var(--signal);font-weight:600}
 
-  .steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:26px}
-  .step .n{width:28px;height:28px;border-radius:50%;background:var(--pine);color:#fff;
-           display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;margin-bottom:12px}
-  .step h3{font-size:16.5px;letter-spacing:-.01em;margin-bottom:6px}
-  .step p{font-size:14.5px;color:var(--slate);line-height:1.6}
+  .ticket{position:absolute;right:-6px;bottom:12px;width:min(66%,330px);background:var(--navy);color:#E8EEF0;border-radius:12px;padding:18px 18px 16px;box-shadow:0 30px 60px -26px rgba(14,27,36,.65)}
+  .ticket h4{font-family:var(--display);font-size:15.5px;font-weight:600;letter-spacing:-.01em;margin:0 0 2px;color:#fff}
+  .ticket .meta{font-size:12px;color:#93A6B0;margin-bottom:14px}
+  .tl{list-style:none;margin:0 0 14px;padding:0;position:relative}
+  .tl li{display:flex;align-items:center;gap:11px;font-size:12.5px;padding:5px 0;position:relative;color:#7E919B}
+  .tl li::before{content:"";width:11px;height:11px;border-radius:50%;border:2px solid #3A5160;background:var(--navy);flex:none;position:relative;z-index:1}
+  .tl li:not(:last-child)::after{content:"";position:absolute;left:4.5px;top:19px;width:2px;height:calc(100% - 8px);background:#3A5160}
+  .tl li.on{color:#E8EEF0}
+  .tl li.on::before{background:#58C2AE;border-color:#58C2AE}
+  .tl li.on:not(:last-child)::after{background:#58C2AE}
+  .ticket .who{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:#B7C5CC;border-top:1px solid rgba(255,255,255,.12);padding-top:12px}
+  .ticket .who b{color:#fff;font-weight:500}
+  .note{position:absolute;left:0;bottom:0;max-width:34%;font-size:12px;color:var(--muted)}
+  .note::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--signal);margin-right:8px}
 
-  .roles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
-  .role{background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:20px}
-  .role h3{font-size:16px;letter-spacing:-.01em;margin-bottom:7px}
-  .role p{font-size:14px;color:var(--slate);line-height:1.6}
+  /* the one orchestrated moment: the request moves down the timeline once */
+  @media (prefers-reduced-motion:no-preference){
+    .tl li{animation:dim .01s both}
+    .tl li.on{animation:light .5s var(--ease) both}
+    .tl li:nth-child(1).on{animation-delay:.5s}
+    .tl li:nth-child(2).on{animation-delay:1s}
+    .tl li:nth-child(3).on{animation-delay:1.5s}
+    .tl li:nth-child(4).on{animation-delay:2s}
+    @keyframes light{from{color:#7E919B}to{color:#E8EEF0}}
+    @keyframes dim{from{color:#7E919B}to{color:#7E919B}}
+  }
 
-  .close{padding:clamp(40px,5vw,60px) 0 clamp(52px,6vw,72px);border-top:1px solid var(--rule)}
-  .close h2{font-size:clamp(20px,2.4vw,25px);letter-spacing:-.02em;margin-bottom:10px}
-  .close p{font-size:15.5px;color:var(--slate);margin-bottom:22px;max-width:52ch}
+  /* ---------- sections ---------- */
+  .sec{padding:clamp(56px,8vw,104px) 0}
+  .sec--tint{background:var(--bg-2)}
+  .sec h2{font-size:clamp(28px,3.8vw,46px);line-height:1.06;letter-spacing:-.03em;max-width:18ch}
+  .sec .kicker{font-size:17px;color:var(--muted);max-width:52ch;margin-top:16px}
+  .sec-head{margin-bottom:clamp(30px,4vw,52px)}
 
-  footer.foot{border-top:1px solid var(--rule);padding:22px 0;background:var(--surface)}
-  .foot-in{display:flex;gap:16px;flex-wrap:wrap;align-items:center;font-size:13.5px;color:var(--slate)}
-  .foot-in .links{margin-left:auto;display:flex;gap:18px}
-  .foot-in a:hover{color:var(--ink)}
+  /* problem strip */
+  .problem{padding:clamp(36px,5vw,56px) 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--card)}
+  .problem-in{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:clamp(24px,5vw,72px);align-items:start}
+  .problem h2{font-size:clamp(22px,2.6vw,30px);letter-spacing:-.02em;line-height:1.2;max-width:22ch}
+  .problem p{font-size:16.5px;color:var(--muted);max-width:58ch}
+  .problem p + p{margin-top:12px;color:var(--text)}
 
-  @media (max-width:900px){ .roles{grid-template-columns:repeat(2,minmax(0,1fr))} }
+  /* workflow */
+  .flow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(18px,3vw,40px);position:relative;counter-reset:s}
+  .flow::before{content:"";position:absolute;left:0;right:0;top:19px;height:2px;background:linear-gradient(90deg,var(--teal) 0 33%,var(--line-2) 33% 100%);opacity:.9}
+  .step{position:relative;padding-top:0}
+  .step .n{position:relative;z-index:1;width:40px;height:40px;border-radius:50%;background:var(--navy);color:#fff;display:grid;place-items:center;font-family:var(--display);font-weight:600;margin-bottom:22px;box-shadow:0 0 0 6px var(--bg)}
+  .sec--tint .step .n{box-shadow:0 0 0 6px var(--bg-2)}
+  .step h3{font-size:22px;letter-spacing:-.02em;margin-bottom:8px}
+  .step p{font-size:15.5px;color:var(--muted);margin-bottom:18px;max-width:38ch}
+  .frag{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;font-size:13px;min-height:132px}
+  .frag .lbl{font-size:11.5px;color:var(--muted);margin-bottom:4px}
+  .frag .fld{border:1px solid var(--line-2);border-radius:6px;padding:7px 9px;margin-bottom:9px;color:var(--navy);background:#fff}
+  .frag .fld--muted{color:var(--muted)}
+  .thumbs{display:flex;gap:8px}
+  .thumb{width:44px;height:34px;border-radius:5px;background:linear-gradient(135deg,#D8E4DF,#B9CFC7);border:1px solid var(--line)}
+  .thumb--add{display:grid;place-items:center;color:var(--muted);background:#fff;border-style:dashed}
+  .frag .pick{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:7px;margin-bottom:7px}
+  .frag .pick--on{border-color:var(--teal);background:var(--mist)}
+  .av{width:24px;height:24px;border-radius:50%;background:var(--navy);color:#fff;font-size:11px;display:grid;place-items:center;flex:none}
+  .av--v{background:var(--calm)}
+  .frag .done-note{padding:9px 10px;background:#FBFAF6;border:1px dashed var(--line-2);border-radius:7px;color:var(--text);margin-top:8px}
+
+  /* capabilities: deliberately uneven */
+  .caps{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:18px}
+  .cap{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:clamp(20px,2.6vw,30px)}
+  .cap h3{font-size:20px;letter-spacing:-.02em;margin:14px 0 8px}
+  .cap p{font-size:15px;color:var(--muted);max-width:46ch}
+  .cap--a{grid-column:span 7}
+  .cap--b{grid-column:span 5;background:var(--navy);border-color:var(--navy)}
+  .cap--b h3{color:#fff}.cap--b p{color:#A9BAC3}
+  .cap--c,.cap--d,.cap--e{grid-column:span 4}
+  .ico{width:42px;height:42px;border-radius:10px;background:var(--mist);color:var(--pine);display:grid;place-items:center}
+  .cap--b .ico{background:rgba(255,255,255,.1);color:#8ADBC8}
+  .ico svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+  .mini{margin-top:20px;border:1px solid var(--line);border-radius:9px;overflow:hidden;font-size:12.5px}
+  .mini div{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:9px 12px;border-bottom:1px solid #EEEBE1;background:#fff}
+  .mini div:last-child{border-bottom:0}
+  .mini .id{color:var(--muted);font-variant-numeric:tabular-nums}
+  .mini-hist{margin-top:20px;font-size:12.5px;color:#C5D2D8;border-left:2px solid #34505F;padding-left:12px;display:grid;gap:8px}
+  .mini-hist b{color:#fff;font-weight:500}
+
+  /* roles */
+  .roles4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid var(--line-2)}
+  .rl{padding:26px 24px 8px 0;margin-right:24px;border-right:1px solid var(--line)}
+  .rl:last-child{border-right:0;margin-right:0}
+  .rl .ico{margin-bottom:18px;background:var(--navy);color:#fff}
+  .rl h3{font-size:20px;letter-spacing:-.02em;margin-bottom:8px}
+  .rl p{font-size:15px;color:var(--muted)}
+  .join{margin-top:30px;font-size:14.5px;color:var(--muted);max-width:74ch}
+
+  /* value */
+  .value{background:var(--navy);color:#E8EEF0}
+  .value h2{color:#fff}
+  .value .kicker{color:#A9BAC3}
+  .value-grid{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:clamp(28px,6vw,88px);align-items:start}
+  .outs{list-style:none;margin:0;padding:0}
+  .outs li{display:flex;gap:16px;align-items:flex-start;padding:19px 0;border-bottom:1px solid rgba(255,255,255,.12);font-size:17px;color:#fff}
+  .outs li:first-child{padding-top:4px}
+  .outs svg{flex:none;width:22px;height:22px;stroke:#58C2AE;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;margin-top:3px}
+  .outs small{display:block;font-size:14px;color:#93A6B0;margin-top:3px}
+
+  /* AI */
+  .ai-grid{display:grid;grid-template-columns:minmax(0,6fr) minmax(0,5fr);gap:clamp(28px,5vw,72px);align-items:center}
+  .ai-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;box-shadow:0 24px 54px -34px rgba(14,27,36,.35)}
+  .ai-card .tag{display:inline-block;font-size:12px;color:var(--signal);background:var(--signal-soft);padding:3px 10px;border-radius:99px;margin-bottom:16px;font-weight:500}
+  .ai-card dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px 18px;font-size:14.5px;margin:0 0 18px}
+  .ai-card dt{color:var(--muted)}
+  .ai-card dd{margin:0;color:var(--navy);font-weight:500}
+  .ai-card .acts{display:flex;gap:10px}
+  .ai-card .acts span{font-size:13px;padding:7px 14px;border-radius:7px;border:1px solid var(--line-2);color:var(--navy)}
+  .ai-card .acts span:first-child{background:var(--navy);color:#fff;border-color:var(--navy)}
+  .facts{list-style:none;padding:0;margin:22px 0 0;display:grid;gap:12px;font-size:15.5px;color:var(--text)}
+  .facts li{padding-left:22px;position:relative}
+  .facts li::before{content:"";position:absolute;left:0;top:.62em;width:10px;height:2px;background:var(--teal)}
+
+  /* closing */
+  .final{padding:clamp(56px,8vw,104px) 0}
+  .final-box{background:var(--pine);color:#fff;border-radius:20px;padding:clamp(34px,6vw,76px);display:grid;grid-template-columns:minmax(0,7fr) auto;gap:30px;align-items:end;position:relative;overflow:hidden}
+  .final-box::after{content:"";position:absolute;right:-60px;top:-60px;width:260px;height:260px;border:1px solid rgba(255,255,255,.16);border-radius:50%;box-shadow:0 0 0 46px rgba(255,255,255,.035)}
+  .final h2{font-size:clamp(30px,4.2vw,52px);line-height:1.04;letter-spacing:-.03em;color:#fff;max-width:16ch;margin-bottom:14px}
+  .final p{font-size:17px;color:#CFE3DB;max-width:50ch}
+  .final .cta{position:relative;z-index:1}
+  .final .btn--w{background:#fff;color:var(--navy)}
+  .final .btn--w:hover{background:var(--mist)}
+  .final .btn--g{background:transparent;color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.4)}
+  .final .btn--g:hover{background:rgba(255,255,255,.1)}
+
+  footer.foot2{border-top:1px solid var(--line);padding:26px 0 34px;font-size:14px;color:var(--muted)}
+  .foot2 .in{display:flex;gap:18px;flex-wrap:wrap;align-items:center}
+  .foot2 nav{margin-left:auto;display:flex;gap:22px}
+  .foot2 a:hover{color:var(--navy)}
+
+  /* ---------- responsive ---------- */
+  @media (max-width:1020px){
+    .hero-grid,.problem-in,.value-grid,.ai-grid{grid-template-columns:minmax(0,1fr)}
+    .preview{max-width:640px}
+    .cap--a,.cap--b{grid-column:span 12}.cap--c,.cap--d{grid-column:span 6}.cap--e{grid-column:span 12}
+    .roles4{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .rl{border-right:0;margin-right:0;padding-right:0;border-bottom:1px solid var(--line);padding-bottom:24px}
+    .final-box{grid-template-columns:minmax(0,1fr);align-items:start}
+    .nav-links{display:none}
+  }
   @media (max-width:720px){
-    .steps,.roles{grid-template-columns:minmax(0,1fr);gap:22px}
-    .top .signin{display:none}
+    .flow{grid-template-columns:minmax(0,1fr);gap:34px}
+    .flow::before{left:19px;right:auto;top:10px;bottom:10px;width:2px;height:auto;background:linear-gradient(180deg,var(--teal) 0 33%,var(--line-2) 33% 100%)}
+    .step{padding-left:62px}.step .n{position:absolute;left:0;top:0;margin:0}
+    .cap--c,.cap--d{grid-column:span 12}
+    .roles4{grid-template-columns:minmax(0,1fr)}
+    .ticket{position:relative;right:auto;width:auto;margin:-14px 12px 0 24px}
+    .rows .row3:last-child{display:none}
+    .preview{padding-bottom:0}
+    .note{position:static;margin-top:14px;max-width:none}
+    .hero h1 span{white-space:normal}
+    .nav-cta .signin{display:none}
+    .row3{grid-template-columns:minmax(0,1fr) auto}.pri{display:none}
+    .hero .cta .btn{flex:1 1 150px}
   }
 </style>
 </head>
-<body>
+<body class="lp">
 
-<header class="top">
-  <div class="page top-in">
-    <a class="wordmark" href="#top">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M3 13l3-8h12l3 8v6H3z"/><path d="M3 13h5l1 3h6l1-3h5"/></symbol>
+    <symbol id="i-team" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.4"/><path d="M17 14.5c2.4 0 4 1.8 4 4.5"/></symbol>
+    <symbol id="i-building" viewBox="0 0 24 24"><path d="M4 21V4h10v17"/><path d="M14 9h6v12"/><path d="M8 8h2M8 12h2M8 16h2M17 13h0M17 17h0"/></symbol>
+    <symbol id="i-receipt" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></symbol>
+    <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M4 18a8 8 0 1 1 16 0"/><path d="M12 18l4-6"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 17v4M17 19h4"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 7l3 3"/></symbol>
+    <symbol id="i-wrench" viewBox="0 0 24 24"><path d="M14.5 6.5a4 4 0 0 0 5 5L21 13l-8 8-4-4 8-8z" transform="translate(-4 -2)"/><path d="M5 19l3-3"/></symbol>
+    <symbol id="i-briefcase" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  </defs>
+</svg>
+
+<header class="nav">
+  <div class="wrap nav-in">
+    <a class="wordmark" href="#top" aria-label="EstateOps home">
       <svg class="glyph" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <rect x="2.5" y="2.5" width="19" height="19" rx="2.5" stroke="#1C5546" stroke-width="1.6"/>
         <path d="M7 7h4v4H7zM13 7h4v4h-4zM7 13h4v4H7z" fill="#1C5546"/>
@@ -64,92 +252,232 @@
       </svg>
       EstateOps
     </a>
-    <div class="right">
-      <a class="signin" href="login.html">Sign in</a>
-      <a class="btn btn--sm" href="login.html">Get started</a>
+    <nav class="nav-links" aria-label="Page sections">
+      <a href="#how">How it works</a>
+      <a href="#features">Features</a>
+      <a href="#people">Who it is for</a>
+    </nav>
+    <div class="nav-cta">
+      <a class="signin" href="login.html">Sign In</a>
+      <a class="btn btn--sm btn--navy" href="login.html?mode=register">Get Started</a>
     </div>
   </div>
 </header>
 
 <main id="top">
 
-  <section class="hero">
-    <div class="page">
-      <h1>Rental Maintenance, Managed in One Place.</h1>
-      <p>Report maintenance issues, coordinate repairs, manage properties and track expenses from one platform.</p>
-      <div class="cta">
-        <a class="btn" href="login.html">Get Started</a>
-        <a class="btn btn--line" href="login.html">Sign In</a>
-        <a class="btn btn--quiet" href="#how">Learn How It Works</a>
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="wrap hero-grid">
+      <div>
+        <p class="eyebrow">PROPERTY MAINTENANCE, FINALLY ORGANIZED</p>
+        <h1 id="hero-title"><span>Every property.</span> <span>Every repair.</span> <span>One clear view.</span></h1>
+        <p class="lede">EstateOps brings tenant requests, maintenance teams, vendors, and repair costs into one organized workspace — so nothing gets lost between the first report and the final fix.</p>
+        <div class="cta">
+          <a class="btn btn--navy" href="login.html?mode=register">Get Started</a>
+          <a class="btn btn--outline" href="login.html">Sign In</a>
+          <a class="textlink" href="#how">See how it works</a>
+        </div>
+        <p class="sub">From the first maintenance request to completed repairs, keep every moving part connected.</p>
+      </div>
+
+      <div class="preview">
+        <div class="win" aria-hidden="true">
+          <div class="win-top"><b>Requests</b><span class="tabs"><span class="tab tab--on">Open</span><span class="tab">Assigned</span><span class="tab">Closed</span></span></div>
+          <div class="rows">
+            <div class="row3 row3--sel"><div class="t">Kitchen sink leaking<small>Maple Court · Unit 4B · Plumbing</small></div><span class="chip c-prog">In progress</span><span class="pri">High</span></div>
+            <div class="row3"><div class="t">AC not cooling<small>Maple Court · Unit 7C · HVAC</small></div><span class="chip c-new">New</span><span class="pri pri--urgent">Urgent</span></div>
+            <div class="row3"><div class="t">Hallway light flickering<small>Cedar House · Unit 2A · Electrical</small></div><span class="chip c-assigned">Assigned</span><span class="pri">Medium</span></div>
+            <div class="row3"><div class="t">Loose balcony railing<small>Cedar House · Unit 5D · Structural</small></div><span class="chip c-new">New</span><span class="pri">High</span></div>
+            <div class="row3"><div class="t">Dishwasher drain blocked<small>Maple Court · Unit 1A · Appliance</small></div><span class="chip c-done">Closed</span><span class="pri">Low</span></div>
+          </div>
+        </div>
+        <div class="ticket" aria-hidden="true">
+          <h4>Kitchen sink leaking</h4>
+          <div class="meta">Maple Court · Unit 4B</div>
+          <ul class="tl">
+            <li class="on">Reported by tenant</li>
+            <li class="on">Reviewed by manager</li>
+            <li class="on">Assigned to vendor</li>
+            <li class="on">Work in progress</li>
+            <li>Completed and closed</li>
+          </ul>
+          <div class="who"><span>Assigned to <b>Plumbing vendor</b></span><span>Quote <b>₹1,800</b></span></div>
+        </div>
+        <p class="note">Illustrative preview with sample data. It is not live business data.</p>
       </div>
     </div>
   </section>
 
-  <section class="band" id="how">
-    <div class="page">
-      <h2>How it works</h2>
-      <div class="steps">
+  <section class="problem" aria-labelledby="problem-title">
+    <div class="wrap problem-in">
+      <h2 id="problem-title">Maintenance usually lives in WhatsApp threads and phone calls.</h2>
+      <div>
+        <p>Requests get buried, nobody is sure who is handling which repair, vendor costs turn up late, and the same leak comes back without anyone noticing it has happened before.</p>
+        <p>EstateOps replaces that with one trackable workflow, from the first report to the completed repair.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="how" aria-labelledby="how-title">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2 id="how-title">From reported issue to resolved repair.</h2>
+        <p class="kicker">Three steps, with a person responsible at each one. Managers and authorized users make the decisions.</p>
+      </div>
+      <div class="flow">
         <div class="step">
           <div class="n" aria-hidden="true">1</div>
           <h3>Report</h3>
-          <p>The tenant describes the problem in their flat and submits it. It gets a reference number straight away.</p>
+          <p>A tenant submits a maintenance issue for their unit, with optional supporting photos.</p>
+          <div class="frag" aria-hidden="true">
+            <div class="lbl">Short title</div><div class="fld">Kitchen tap leaking</div>
+            <div class="lbl">Photos</div>
+            <div class="thumbs"><span class="thumb"></span><span class="thumb"></span><span class="thumb thumb--add">+</span></div>
+          </div>
         </div>
         <div class="step">
           <div class="n" aria-hidden="true">2</div>
           <h3>Assign</h3>
-          <p>The manager sets the priority and sends the job to a technician or a vendor company, with a date it should be done by.</p>
+          <p>A property manager reviews the request and assigns the right technician or vendor.</p>
+          <div class="frag" aria-hidden="true">
+            <div class="pick pick--on"><span class="av">T</span>Technician<span style="margin-left:auto;color:var(--pine)">Selected</span></div>
+            <div class="pick"><span class="av av--v">V</span>Plumbing vendor</div>
+            <div class="lbl" style="margin-top:8px">Due date</div><div class="fld fld--muted" style="margin:0">Optional</div>
+          </div>
         </div>
         <div class="step">
           <div class="n" aria-hidden="true">3</div>
-          <h3>Fix and close</h3>
-          <p>They update progress, attach photos and record what was done. The manager approves the cost and closes it.</p>
+          <h3>Resolve</h3>
+          <p>The assigned team updates progress, records completion details, and keeps the relevant people informed.</p>
+          <div class="frag" aria-hidden="true">
+            <span class="chip c-prog">In progress</span> <span class="chip c-done" style="margin-left:4px">Completed</span>
+            <div class="done-note">Washer replaced and base sealed. No leak after test.</div>
+          </div>
         </div>
       </div>
     </div>
   </section>
 
-  <section class="band">
-    <div class="page">
-      <h2>Who it is for</h2>
-      <div class="roles roles--4">
-        <div class="role">
-          <h3>Tenants</h3>
-          <p>Report a problem in your flat and follow its progress. You only ever see your own.</p>
-        </div>
-        <div class="role">
-          <h3>Property managers</h3>
-          <p>See every open request across your properties, assign the work, and keep track of what it costs.</p>
-        </div>
-        <div class="role">
-          <h3>Technicians</h3>
-          <p>See the jobs given to you, update progress, and record what you did and what it cost.</p>
-        </div>
-        <div class="role">
-          <h3>Vendors</h3>
-          <p>Receive work orders for your company, send quotations, and submit invoices for approval.</p>
-        </div>
+  <section class="sec sec--tint" id="features" aria-labelledby="feat-title">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2 id="feat-title">Everything the repair needs, in one place.</h2>
+      </div>
+      <div class="caps">
+        <article class="cap cap--a">
+          <span class="ico"><svg aria-hidden="true"><use href="#i-inbox"/></svg></span>
+          <h3>Maintenance requests</h3>
+          <p>Bring repair reports into one organized queue. Search and filter by status, priority or category, and track every request's details and history.</p>
+          <div class="mini" aria-hidden="true">
+            <div><span class="id">#1042</span><span>Kitchen sink leaking</span><span class="chip c-prog">In progress</span></div>
+            <div><span class="id">#1041</span><span>AC not cooling</span><span class="chip c-new">New</span></div>
+            <div><span class="id">#1038</span><span>Hallway light flickering</span><span class="chip c-assigned">Assigned</span></div>
+          </div>
+        </article>
+        <article class="cap cap--b">
+          <span class="ico"><svg aria-hidden="true"><use href="#i-team"/></svg></span>
+          <h3>Team and vendor coordination</h3>
+          <p>Assign work to technicians or authorized vendors and follow its progress. Vendors can send quotations before work starts.</p>
+          <div class="mini-hist" aria-hidden="true">
+            <span><b>Assigned</b> to Plumbing vendor</span>
+            <span><b>Quotation</b> awaiting manager decision</span>
+            <span><b>Work started</b> by assigned team</span>
+          </div>
+        </article>
+        <article class="cap cap--c">
+          <span class="ico"><svg aria-hidden="true"><use href="#i-building"/></svg></span>
+          <h3>Properties and units</h3>
+          <p>Organize maintenance across properties and units, with access limited according to each person's role.</p>
+        </article>
+        <article class="cap cap--d">
+          <span class="ico"><svg aria-hidden="true"><use href="#i-receipt"/></svg></span>
+          <h3>Expense visibility</h3>
+          <p>Keep maintenance expenses and vendor invoices organized. A manager other than the person who recorded a cost reviews and approves it.</p>
+        </article>
+        <article class="cap cap--e">
+          <span class="ico"><svg aria-hidden="true"><use href="#i-gauge"/></svg></span>
+          <h3>Operational oversight</h3>
+          <p>See open requests, assignments, progress and recent activity on role-specific dashboards, with in-app notifications as work moves.</p>
+        </article>
       </div>
     </div>
   </section>
 
-  <section class="close">
-    <div class="page">
-      <h2>Ready to start?</h2>
-      <p>Set up your organization, add a property and its units, invite your tenants and technicians, and run a repair from report to closed.</p>
-      <div class="cta" style="display:flex;gap:12px;flex-wrap:wrap">
-        <a class="btn" href="login.html">Get Started</a>
-        <a class="btn btn--line" href="login.html">Sign in</a>
+  <section class="sec" id="people" aria-labelledby="people-title">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2 id="people-title">Made for the four people in every repair.</h2>
+      </div>
+      <div class="roles4">
+        <div class="rl"><span class="ico"><svg aria-hidden="true"><use href="#i-key"/></svg></span><h3>Property managers</h3><p>Coordinate properties, requests, assignments, and maintenance costs.</p></div>
+        <div class="rl"><span class="ico"><svg aria-hidden="true"><use href="#i-building"/></svg></span><h3>Tenants</h3><p>Report issues and follow the progress of their own requests.</p></div>
+        <div class="rl"><span class="ico"><svg aria-hidden="true"><use href="#i-wrench"/></svg></span><h3>Technicians</h3><p>Access assigned jobs and record work progress and completion.</p></div>
+        <div class="rl"><span class="ico"><svg aria-hidden="true"><use href="#i-briefcase"/></svg></span><h3>Vendors</h3><p>Access authorized work orders and provide updates within their permissions.</p></div>
+      </div>
+      <p class="join">Each person sees only what their role allows. Tenants create an account and are linked to their unit by a manager. Managers, technicians and vendors join by invitation, and the first manager sets up a new installation.</p>
+    </div>
+  </section>
+
+  <section class="sec value" aria-labelledby="value-title">
+    <div class="wrap value-grid">
+      <div>
+        <h2 id="value-title">Less chasing. More clarity.</h2>
+        <p class="kicker">Practical outcomes from keeping every request, assignment and cost in one place.</p>
+      </div>
+      <ul class="outs">
+        <li><svg aria-hidden="true"><use href="#i-check"/></svg><span>Fewer missed maintenance requests<small>Every report lands in one queue instead of scattered messages.</small></span></li>
+        <li><svg aria-hidden="true"><use href="#i-check"/></svg><span>Clear responsibility for every assigned repair<small>Each job has a named technician or vendor.</small></span></li>
+        <li><svg aria-hidden="true"><use href="#i-check"/></svg><span>Better visibility into repair progress<small>Status and history are visible to the people who should see them.</small></span></li>
+        <li><svg aria-hidden="true"><use href="#i-check"/></svg><span>More organized expense records<small>Costs are recorded against the request they belong to.</small></span></li>
+        <li><svg aria-hidden="true"><use href="#i-check"/></svg><span>A useful history of recurring property issues<small>Repeat problems in the same unit show up in Insights.</small></span></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="sec" aria-labelledby="ai-title">
+    <div class="wrap ai-grid">
+      <div>
+        <h2 id="ai-title">AI that suggests. People decide.</h2>
+        <p class="kicker">When an administrator adds a Gemini API key, a manager can ask for a suggested category and priority for a request, then accept or ignore it.</p>
+        <ul class="facts">
+          <li>Only the request title and description are sent to the AI service.</li>
+          <li>Suggestions are validated, stored for review, and never applied automatically.</li>
+          <li>If AI is not configured, EstateOps says so plainly and everything else works.</li>
+          <li>Insights for repeat issues and unusual costs use fixed rules over your own records, not AI.</li>
+        </ul>
+      </div>
+      <div class="ai-card" aria-label="Example of a suggestion, not a live AI result">
+        <span class="tag">Example only, not a live AI result</span>
+        <dl>
+          <dt>Reported issue</dt><dd>Water leaking under a kitchen sink</dd>
+          <dt>Suggested category</dt><dd>Plumbing</dd>
+          <dt>Suggested priority</dt><dd>Review based on the reported severity</dd>
+        </dl>
+        <div class="acts" aria-hidden="true"><span>Accept suggestion</span><span>Ignore</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="final" aria-labelledby="final-title">
+    <div class="wrap">
+      <div class="final-box">
+        <div>
+          <h2 id="final-title">Bring every maintenance request into focus.</h2>
+          <p>Give your property operations a clearer, more organized way to manage repairs from report to resolution.</p>
+        </div>
+        <div class="cta">
+          <a class="btn btn--w" href="login.html?mode=register">Get Started</a>
+          <a class="btn btn--g" href="login.html">Sign In</a>
+        </div>
       </div>
     </div>
   </section>
 </main>
 
-<footer class="foot">
-  <div class="page foot-in">
+<footer class="foot2">
+  <div class="wrap in">
     <span>EstateOps — rental maintenance and property management</span>
-    <nav class="links" aria-label="Footer">
-      <a href="login.html">Sign in</a>
-    </nav>
+    <nav aria-label="Footer"><a href="#how">How it works</a><a href="login.html">Sign In</a><a href="login.html?mode=register">Get Started</a></nav>
   </div>
 </footer>
 

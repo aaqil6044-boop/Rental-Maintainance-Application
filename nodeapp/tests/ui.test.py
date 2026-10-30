@@ -48,8 +48,8 @@ try:
         print("\n== First run: create the organization ==")
         c_m, m = ctx(); watch(m, "manager")
         m.goto(BASE + "/index.html")
-        ok("landing page has the product headline", "Rental Maintenance, Managed in One Place" in m.inner_text("h1"))
-        for label in ["Get Started", "Sign In", "Learn How It Works"]:
+        ok("landing page has the product headline", "One clear view" in m.inner_text("h1"))
+        for label in ["Get Started", "Sign In", "See how it works"]:
             ok(f"landing page offers '{label}'", m.locator(f"a:has-text('{label}')").count() >= 1)
         body = m.inner_text("body").lower()
         ok("landing page shows no demo credentials", "password123" not in body and "@estateops.test" not in body)
@@ -60,7 +60,7 @@ try:
         m.fill("#org", "Harbour Estates"); m.fill("#name", "Hana Admin"); m.fill("#email", "hana@harbour.test"); m.fill("#pw", PW)
         m.click("#submit"); m.wait_for_url("**/app.html**")
         m.wait_for_selector(".stats")
-        ok("manager lands on their own dashboard", nav_labels(m) == ["Overview", "Requests", "Properties", "People", "Vendors", "Insights", "Activity", "Notifications", "Account"], nav_labels(m))
+        ok("manager lands on their own dashboard", nav_labels(m) == ["Overview", "Requests", "Properties", "People", "Vendors", "Insights", "Activity", "Load testing", "Notifications", "Account"], nav_labels(m))
         ok("empty install shows a getting-started guide, not fake numbers", "Get started" in m.inner_text("#panes") and "Open requests" in m.inner_text("#panes"))
         ok("all dashboard figures start at zero", m.eval_on_selector_all(".stat .v", "e=>e.slice(0,4).map(x=>x.innerText)") == ["0", "0", "0", "0"])
         m.screenshot(path=str(SHOTS / "manager-empty.png"))

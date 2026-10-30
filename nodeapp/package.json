@@ -5,14 +5,53 @@
   "description": "EstateOps - rental maintenance and property management",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "node bootstrap.js",
     "dev": "node scripts/dev.js",
     "create-admin": "node scripts/create-admin.js",
-    "test": "node tests/api.test.js && node tests/migration.test.js && node tests/seed.test.js && node tests/spec.test.js",
-    "reset": "node scripts/reset.js"
+    "test": "node tests/api.test.js && node tests/migration.test.js && node tests/seed.test.js && node tests/spec.test.js && node tests/cache.test.js && node tests/security.test.js && node tests/secrets.test.js && node tests/ops.test.js && node tests/hardening.test.js && node tests/email.test.js && node tests/sessions.test.js && node tests/privacy.test.js && node tests/loadtest.api.test.js",
+    "report": "node scripts/report.js",
+    "e2e": "playwright test",
+    "e2e:all": "playwright test; node scripts/e2e-report.js",
+    "regression": "node scripts/regression.js",
+    "regression:watch": "node scripts/regression.js --watch",
+    "regression:report": "playwright show-report report/e2e-html-regression",
+    "watch": "node scripts/watch.js",
+    "e2e:ui": "playwright test --ui",
+    "e2e:headed": "playwright test --headed",
+    "e2e:report": "playwright show-report report/e2e-html",
+    "test:unit": "node --test tests/unit/rules.test.js tests/unit/loadtest.test.js",
+    "reset": "node scripts/reset.js",
+    "test:loadtest": "node --test tests/unit/loadtest.test.js tests/loadtest/engine.test.js && node tests/loadtest.api.test.js",
+    "e2e:loadtest": "playwright test e2e/loadtest.spec.js --project=sample-data",
+    "loadtest": "node performance/scripts/cli.js run",
+    "loadtest:smoke": "node performance/scripts/cli.js run --config performance/config/smoke.yaml",
+    "loadtest:stress": "node performance/scripts/cli.js run --config performance/config/stress.yaml",
+    "loadtest:soak": "node performance/scripts/cli.js run --config performance/config/soak.yaml",
+    "loadtest:compare": "node performance/scripts/cli.js compare",
+    "loadtest:report": "node performance/scripts/cli.js report",
+    "loadtest:data": "node performance/scripts/cli.js data",
+    "start:cluster": "node scripts/cluster.js",
+    "balancer": "node scripts/balancer.js",
+    "loadtest:breakpoint": "node performance/scripts/cli.js run --config performance/config/breakpoint.yaml",
+    "loadtest:scale": "node performance/scripts/scale.js",
+    "test:scale": "node --test tests/unit/balancer.test.js && node tests/scale.test.js && node tests/autoscale.test.js",
+    "autoscale": "node scripts/autoscale.js --listen 9000 --min 1 --max 4",
+    "test:cache": "node tests/cache.test.js",
+    "test:security": "node tests/security.test.js",
+    "loadtest:cache": "node performance/scripts/cache-bench.js",
+    "test:secrets": "node tests/secrets.test.js",
+    "start:local": "node --env-file=config/local.env scripts/dev.js",
+    "start:prod": "node --env-file=config/production.env bootstrap.js",
+    "backup": "node scripts/backup.js",
+    "test:ops": "node tests/ops.test.js",
+    "test:hardening": "node tests/hardening.test.js",
+    "test:email": "node tests/email.test.js",
+    "test:sessions": "node tests/sessions.test.js",
+    "retention": "node scripts/retention.js",
+    "test:privacy": "node tests/privacy.test.js"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20.6"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -20,9 +59,14 @@
     "express": "^4.21.1",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.0",
+    "nodemailer": "^10.3.1",
     "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.1",
     "ajv": "^8.20.0"
+  },
+  "optionalDependencies": {
+    "@aws-sdk/client-secrets-manager": "^3.1159.0"
   }
 }

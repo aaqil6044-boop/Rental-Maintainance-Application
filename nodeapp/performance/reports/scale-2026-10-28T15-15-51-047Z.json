@@ -1,0 +1,42 @@
+{
+  "schema": "estateops.scale-test.v1",
+  "cpuCores": 4,
+  "workers": 2,
+  "config": "scale.yaml",
+  "results": [
+    {
+      "topology": "single",
+      "processes": 1,
+      "balancer": null,
+      "error": null,
+      "avgRps": 134.34,
+      "p50": 274.59,
+      "p95": 866.8,
+      "p99": 2192.44,
+      "errorRatePct": 0.02,
+      "requests": 10769,
+      "balancerStats": null,
+      "killedInstance": null
+    },
+    {
+      "topology": "cluster",
+      "processes": 2,
+      "balancer": null,
+      "error": null,
+      "avgRps": 196.72,
+      "p50": 88.61,
+      "p95": 678.87,
+      "p99": 1394.89,
+      "errorRatePct": 0.01,
+      "requests": 15780,
+      "balancerStats": null,
+      "killedInstance": null
+    },
+    {
+      "topology": "balanced",
+      "error": "The load run for \"balanced\" produced no report (exit 2).",
+      "balancerStats": null,
+      "killedInstance": null
+    }
+  ]
+}
